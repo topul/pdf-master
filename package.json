@@ -5,7 +5,6 @@
   "main": "electron/main.js",
   "author": "PDF Master",
   "license": "MIT",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

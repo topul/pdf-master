@@ -1,9 +1,6 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
-import path from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const path = require('path')
+const fs = require('fs/promises')
 
 let mainWindow
 
@@ -74,7 +71,6 @@ ipcMain.handle('dialog:saveFile', async (event, options) => {
 })
 
 ipcMain.handle('fs:readFile', async (event, filePath) => {
-  const fs = await import('fs/promises')
   try {
     const data = await fs.readFile(filePath)
     return { success: true, data: Array.from(data) }
@@ -84,7 +80,6 @@ ipcMain.handle('fs:readFile', async (event, filePath) => {
 })
 
 ipcMain.handle('fs:writeFile', async (event, filePath, dataArray) => {
-  const fs = await import('fs/promises')
   try {
     const data = new Uint8Array(dataArray)
     await fs.writeFile(filePath, data)
@@ -95,11 +90,9 @@ ipcMain.handle('fs:writeFile', async (event, filePath, dataArray) => {
 })
 
 ipcMain.handle('fs:writeFiles', async (event, files) => {
-  const fs = await import('fs/promises')
-  const pathMod = await import('path')
   try {
     for (const file of files) {
-      const dir = pathMod.dirname(file.path)
+      const dir = path.dirname(file.path)
       try {
         await fs.access(dir)
       } catch {
