@@ -1,5 +1,10 @@
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
-import fontkit from '@pdf-lib/fontkit'
+import * as fontkitModule from '@pdf-lib/fontkit'
+
+// Vite 环境下 fontkit 的导出可能被包装，取实际可用的引用
+const fontkit = (fontkitModule.default && typeof fontkitModule.default === 'function')
+  ? fontkitModule.default
+  : (typeof fontkitModule === 'function' ? fontkitModule : fontkitModule.default || fontkitModule)
 
 export async function loadPdf(fileData) {
   const uint8Array = new Uint8Array(fileData)
@@ -21,7 +26,8 @@ async function loadChineseFont(pdfDoc) {
   }
 
   pdfDoc.registerFontkit(fontkit)
-  const font = await pdfDoc.embedFont(cachedFontData, { subset: true })
+  // 不使用 subset:true，避免 createSubset 报错；完整嵌入字体
+  const font = await pdfDoc.embedFont(cachedFontData)
   return font
 }
 
