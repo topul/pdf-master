@@ -1,5 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react'
+import {
+  Type,
+  FileText,
+  Save,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  MousePointerClick,
+  Loader2,
+  Info,
+} from 'lucide-react'
 import { getPdfInfo, addText, renderPdfToImages } from '../utils/pdfUtils.js'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import PageHeader from '@/components/PageHeader.jsx'
+import EmptyState from '@/components/EmptyState.jsx'
+import StatusMessage from '@/components/StatusMessage.jsx'
+import FileInfoCard from '@/components/FileInfoCard.jsx'
 
 function TextPage() {
   const [file, setFile] = useState(null)
@@ -71,7 +92,7 @@ function TextPage() {
         setClickPos(null)
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败: ${e.message}` })
+        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
       }
     }
   }
@@ -86,7 +107,6 @@ function TextPage() {
     const scaleX = img.width / rect.width
     const scaleY = img.height / rect.height
 
-    // PDF 坐标系原点在左下角，Y 轴向上
     const pdfX = clickX * scaleX
     const pdfY = img.height - clickY * scaleY
 
@@ -120,7 +140,7 @@ function TextPage() {
       setClickPos(null)
       setStatus({ type: 'success', message: '文字已添加，可在预览中查看效果' })
     } catch (error) {
-      setStatus({ type: 'error', message: `添加失败: ${error.message}` })
+      setStatus({ type: 'error', message: `添加失败：${error.message}` })
     }
 
     setProcessing(false)
@@ -137,9 +157,12 @@ function TextPage() {
 
     const writeResult = await window.electronAPI.writeFile(saveResult.filePath, currentData)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `保存成功！文件已保存到: ${saveResult.filePath}` })
+      setStatus({
+        type: 'success',
+        message: `保存成功！文件已保存到：${saveResult.filePath}`,
+      })
     } else {
-      setStatus({ type: 'error', message: `保存失败: ${writeResult.error}` })
+      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
     }
   }
 
@@ -153,170 +176,209 @@ function TextPage() {
     setPageImages([])
   }
 
-  return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1>📝 添加文字</h1>
-        <p>在 PDF 页面指定位置添加文字内容，点击预览图选择位置</p>
-      </div>
+  const goToPage = (delta) => {
+    const next = Math.min(pageCount - 1, Math.max(0, selectedPageIndex + delta))
+    setSelectedPageIndex(next)
+    setClickPos(null)
+  }
 
-      <div className="action-bar">
-        <button className="btn btn-primary" onClick={handleSelectFile} disabled={processing}>
-          📁 选择 PDF 文件
-        </button>
+  return (
+    <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-8">
+      <PageHeader
+        icon={Type}
+        title="添加文字"
+        description="在 PDF 页面指定位置添加文字内容，点击预览图选择位置"
+      >
         {file && (
-          <button className="btn btn-outline" onClick={handleClear} disabled={processing}>
-            关闭
-          </button>
+          <Button variant="outline" size="sm" onClick={handleClear} disabled={processing}>
+            <FileText className="mr-1.5 h-4 w-4" />
+            更换文件
+          </Button>
         )}
-        <div className="flex-spacer" />
-        <button
-          className="btn btn-success"
+        <Button size="sm" onClick={handleSelectFile} disabled={processing}>
+          <FileText className="mr-1.5 h-4 w-4" />
+          选择文件
+        </Button>
+        <Button
+          size="sm"
           onClick={handleSave}
           disabled={processing || !currentData}
         >
-          💾 保存文件
-        </button>
-      </div>
+          <Save className="mr-1.5 h-4 w-4" />
+          保存
+        </Button>
+      </PageHeader>
 
-      {status && (
-        <div className={`status-bar status-${status.type}`}>{status.message}</div>
-      )}
+      <StatusMessage status={status} />
 
-      {file && (
-        <div className="file-info-card">
-          <div className="info-icon">📄</div>
-          <div className="info-content">
-            <div className="info-name">{file.name}</div>
-            <div className="info-meta">共 {pageCount} 页</div>
-          </div>
-        </div>
-      )}
+      {!file ? (
+        <EmptyState
+          icon={Type}
+          title="还没有选择 PDF"
+          description="选择一个 PDF 后，可以点击页面预览的任意位置叠加文字内容"
+          actionLabel="选择 PDF 文件"
+          onAction={handleSelectFile}
+          tips={[
+            'PDF 格式不支持修改已有文字',
+            '本功能在指定位置叠加新文字',
+            '添加后可继续点击其他位置添加更多文字',
+          ]}
+        />
+      ) : (
+        <div className="flex flex-1 flex-col gap-4 overflow-hidden">
+          <FileInfoCard
+            name={file.name}
+            meta={`共 ${pageCount} 页 · 当前第 ${selectedPageIndex + 1} 页`}
+            onRemove={!processing ? handleClear : undefined}
+          />
 
-      {currentData && (
-        <div className="text-edit-layout">
-          <div className="text-preview-panel">
-            <div className="panel-header">
-              <span>页面预览（点击选择文字位置）</span>
-              <div className="page-selector">
-                <button
-                  className="mini-btn"
-                  onClick={() => {
-                    setSelectedPageIndex(Math.max(0, selectedPageIndex - 1))
-                    setClickPos(null)
-                  }}
-                  disabled={selectedPageIndex === 0 || processing}
-                >
-                  上一页
-                </button>
-                <span className="page-indicator">
-                  {selectedPageIndex + 1} / {pageCount}
+          <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[1fr_340px]">
+            {/* 预览面板 */}
+            <Card className="flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between border-b px-4 py-2.5">
+                <span className="text-sm font-medium">页面预览</span>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => goToPage(-1)}
+                    disabled={selectedPageIndex === 0 || processing}
+                    title="上一页"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[60px] text-center text-xs text-muted-foreground">
+                    {selectedPageIndex + 1} / {pageCount}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => goToPage(1)}
+                    disabled={selectedPageIndex === pageCount - 1 || processing}
+                    title="下一页"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div
+                className="flex flex-1 cursor-crosshair items-center justify-center overflow-auto bg-muted/30 p-4"
+                onClick={handlePageClick}
+                ref={previewRef}
+              >
+                {renderingPreview ? (
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="text-sm">渲染预览中...</span>
+                  </div>
+                ) : pageImages[selectedPageIndex] ? (
+                  <div className="relative inline-block shadow-md">
+                    <img
+                      src={pageImages[selectedPageIndex].url}
+                      alt={`第 ${selectedPageIndex + 1} 页`}
+                      className="block max-h-full max-w-full"
+                    />
+                    {clickPos && (
+                      <div
+                        className="pointer-events-none absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+                        style={{ left: clickPos.displayX, top: clickPos.displayY }}
+                      >
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                          <MapPin className="h-3.5 w-3.5" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">无预览</div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 border-t bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">
+                <MousePointerClick className="h-3.5 w-3.5" />
+                <span>
+                  {clickPos
+                    ? `已选择位置：(${Math.round(clickPos.x)}, ${Math.round(clickPos.y)})`
+                    : '点击预览图任意位置以选择文字添加位置'}
                 </span>
-                <button
-                  className="mini-btn"
-                  onClick={() => {
-                    setSelectedPageIndex(Math.min(pageCount - 1, selectedPageIndex + 1))
-                    setClickPos(null)
-                  }}
-                  disabled={selectedPageIndex === pageCount - 1 || processing}
-                >
-                  下一页
-                </button>
               </div>
-            </div>
-            <div className="preview-container" ref={previewRef}>
-              {renderingPreview ? (
-                <div className="preview-loading">
-                  <div className="spinner" />
-                  <p>渲染预览中...</p>
+            </Card>
+
+            {/* 控制面板 */}
+            <Card className="flex flex-col overflow-hidden">
+              <div className="border-b px-4 py-2.5">
+                <h3 className="text-sm font-medium">文字设置</h3>
+                <p className="text-xs text-muted-foreground">配置文字内容与样式</p>
+              </div>
+
+              <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+                <div className="flex flex-col gap-2">
+                  <Label className="text-sm">文字内容</Label>
+                  <Textarea
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={3}
+                    placeholder="在此输入要添加的文字"
+                    disabled={processing}
+                  />
                 </div>
-              ) : pageImages[selectedPageIndex] ? (
-                <div className="preview-image-wrapper" onClick={handlePageClick}>
-                  <img src={pageImages[selectedPageIndex].url} alt={`第 ${selectedPageIndex + 1} 页`} />
-                  {clickPos && (
-                    <div
-                      className="click-marker"
-                      style={{
-                        left: clickPos.displayX,
-                        top: clickPos.displayY,
-                      }}
-                    >
-                      📍
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm">字号</Label>
+                    <Input
+                      type="number"
+                      min="8"
+                      max="72"
+                      value={fontSize}
+                      onChange={(e) => setFontSize(e.target.value)}
+                      disabled={processing}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm">颜色</Label>
+                    <div className="flex h-9 items-center gap-2 rounded-md border px-2">
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(e) => setColor(e.target.value)}
+                        disabled={processing}
+                        className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
+                      />
+                      <span className="text-xs text-muted-foreground">{color}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
-              ) : (
-                <div className="preview-loading">无预览</div>
-              )}
-            </div>
-          </div>
 
-          <div className="text-controls-panel">
-            <h3>文字设置</h3>
+                <Button
+                  onClick={handleAddText}
+                  disabled={processing || !text.trim() || !clickPos}
+                  className="w-full"
+                >
+                  {processing ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      添加中...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      添加文字
+                    </>
+                  )}
+                </Button>
 
-            <div className="control-group">
-              <label>文字内容</label>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="input-field textarea"
-                rows={3}
-                placeholder="在此输入要添加的文字"
-                disabled={processing}
-              />
-            </div>
-
-            <div className="control-group">
-              <label>字号</label>
-              <input
-                type="number"
-                min="8"
-                max="72"
-                value={fontSize}
-                onChange={(e) => setFontSize(e.target.value)}
-                className="input-field"
-                disabled={processing}
-              />
-            </div>
-
-            <div className="control-group">
-              <label>颜色</label>
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="color-picker"
-                disabled={processing}
-              />
-            </div>
-
-            {clickPos ? (
-              <div className="position-info">
-                已选择位置：({Math.round(clickPos.x)}, {Math.round(clickPos.y)})
+                <div className="mt-2 flex gap-2 rounded-md border bg-muted/30 p-3">
+                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="text-xs text-muted-foreground">
+                    <p>字号以 PDF 坐标系单位为准，与显示像素有差异。建议先小范围测试再批量添加。</p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="position-hint">
-                💡 请在左侧预览图中点击要添加文字的位置
-              </div>
-            )}
-
-            <button
-              className="btn btn-primary add-text-btn"
-              onClick={handleAddText}
-              disabled={processing || !text.trim() || !clickPos}
-            >
-              {processing ? '添加中...' : '➕ 添加文字'}
-            </button>
-
-            <div className="tip-box">
-              <p>📌 使用说明：</p>
-              <ul>
-                <li>PDF 格式不支持修改已有文字</li>
-                <li>本功能在指定位置叠加新文字</li>
-                <li>添加后可继续点击其他位置添加更多文字</li>
-                <li>字号以 PDF 坐标系单位为准</li>
-              </ul>
-            </div>
+            </Card>
           </div>
         </div>
       )}
