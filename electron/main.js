@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
+const { PDFDocument, rgb, degrees } = require('pdf-lib')
+const fontkit = require('@pdf-lib/fontkit')
 
 let mainWindow
 
@@ -148,4 +150,179 @@ ipcMain.handle('fs:readSystemFont', async () => {
   }
 
   return { success: false, error: '未找到可用的中文字体' }
+})
+
+// ============ PDF 文字相关操作（在主进程执行，保证 fontkit 正常工作）============
+// 加载并缓存系统字体
+let cachedFontBuffer = null
+
+async function getChineseFont(pdfDoc) {
+  if (!cachedFontBuffer) {
+    const candidates = {
+      darwin: [
+        '/System/Library/Fonts/Supplemental/Songti.ttc',
+        '/System/Library/Fonts/STHeiti Light.ttc',
+        '/System/Library/Fonts/STHeiti Medium.ttc',
+        '/System/Library/Fonts/PingFang.ttc',
+        '/Library/Fonts/Arial Unicode.ttf',
+      ],
+      win32: [
+        'C:/Windows/Fonts/simhei.ttf',
+        'C:/Windows/Fonts/simsun.ttc',
+        'C:/Windows/Fonts/msyh.ttc',
+        'C:/Windows/Fonts/msyhbd.ttc',
+      ],
+      linux: [
+        '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK.ttc',
+      ],
+    }
+    const paths = candidates[process.platform] || candidates.linux
+    for (const fontPath of paths) {
+      try {
+        await fs.access(fontPath)
+        cachedFontBuffer = await fs.readFile(fontPath)
+        break
+      } catch {
+        // 继续尝试
+      }
+    }
+    if (!cachedFontBuffer) {
+      throw new Error('未找到可用的中文字体')
+    }
+  }
+
+  pdfDoc.registerFontkit(fontkit)
+  // TTC 集合字体：用 fontkit.create 返回第 0 个字体
+  // embedFont 内部已支持 TTC，直接传 Buffer 即可
+  return await pdfDoc.embedFont(cachedFontBuffer, { subset: true })
+}
+
+// 添加文字
+ipcMain.handle('pdf:addText', async (event, args) => {
+  try {
+    const { fileData, options } = args
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData))
+    const pages = pdfDoc.getPages()
+
+    if (options.pageIndex < 0 || options.pageIndex >= pages.length) {
+      throw new Error(`无效的页码: ${options.pageIndex + 1}`)
+    }
+
+    const page = pages[options.pageIndex]
+    const font = await getChineseFont(pdfDoc)
+    const color = options.color || { r: 0, g: 0, b: 0 }
+
+    page.drawText(options.text, {
+      x: options.x,
+      y: options.y,
+      size: options.fontSize || 16,
+      font,
+      color: rgb(color.r, color.g, color.b),
+      opacity: options.opacity != null ? options.opacity : 1,
+    })
+
+    const bytes = await pdfDoc.save()
+    return { success: true, data: Array.from(bytes) }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+// 添加水印
+ipcMain.handle('pdf:addWatermark', async (event, args) => {
+  try {
+    const { fileData, options } = args
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData))
+    const pages = pdfDoc.getPages()
+    const font = await getChineseFont(pdfDoc)
+    const color = options.color || { r: 0.8, g: 0.8, b: 0.8 }
+
+    for (const page of pages) {
+      const { width, height } = page.getSize()
+      const textWidth = font.widthOfTextAtSize(options.text, options.fontSize || 60)
+
+      let x, y
+      const position = options.position || 'center'
+      if (position === 'center') {
+        x = width / 2 - textWidth / 2
+        y = height / 2
+      } else if (position === 'top-left') {
+        x = 50
+        y = height - 50
+      } else if (position === 'bottom-right') {
+        x = width - textWidth - 50
+        y = 50
+      } else {
+        x = width / 2 - textWidth / 2
+        y = height / 2
+      }
+
+      page.drawText(options.text, {
+        x,
+        y,
+        size: options.fontSize || 60,
+        font,
+        color: rgb(color.r, color.g, color.b),
+        opacity: options.opacity != null ? options.opacity : 0.2,
+        rotate: degrees(options.rotation != null ? options.rotation : -45),
+      })
+    }
+
+    const bytes = await pdfDoc.save()
+    return { success: true, data: Array.from(bytes) }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+// 添加页码
+ipcMain.handle('pdf:addPageNumbers', async (event, args) => {
+  try {
+    const { fileData, options } = args
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData))
+    const pages = pdfDoc.getPages()
+    const font = await getChineseFont(pdfDoc)
+    const color = options.color || { r: 0, g: 0, b: 0 }
+
+    const position = options.position || 'bottom-center'
+    const fontSize = options.fontSize || 12
+    const startNumber = options.startNumber || 1
+    const format = options.format || '{page}'
+    const margin = 30
+
+    pages.forEach((page, idx) => {
+      const { width, height } = page.getSize()
+      const pageNum = startNumber + idx
+      const text = format.replace('{page}', pageNum).replace('{total}', pages.length)
+      const textWidth = font.widthOfTextAtSize(text, fontSize)
+
+      let x, y
+      if (position === 'bottom-center') {
+        x = width / 2 - textWidth / 2; y = margin
+      } else if (position === 'bottom-right') {
+        x = width - textWidth - margin; y = margin
+      } else if (position === 'bottom-left') {
+        x = margin; y = margin
+      } else if (position === 'top-center') {
+        x = width / 2 - textWidth / 2; y = height - margin - fontSize
+      } else if (position === 'top-right') {
+        x = width - textWidth - margin; y = height - margin - fontSize
+      } else if (position === 'top-left') {
+        x = margin; y = height - margin - fontSize
+      }
+
+      page.drawText(text, {
+        x, y, size: fontSize, font,
+        color: rgb(color.r, color.g, color.b),
+      })
+    })
+
+    const bytes = await pdfDoc.save()
+    return { success: true, data: Array.from(bytes) }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
 })

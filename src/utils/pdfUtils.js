@@ -1,34 +1,9 @@
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
-import * as fontkitModule from '@pdf-lib/fontkit'
-
-// Vite 环境下 fontkit 的导出可能被包装，取实际可用的引用
-const fontkit = (fontkitModule.default && typeof fontkitModule.default === 'function')
-  ? fontkitModule.default
-  : (typeof fontkitModule === 'function' ? fontkitModule : fontkitModule.default || fontkitModule)
 
 export async function loadPdf(fileData) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
   return pdfDoc
-}
-
-// 加载系统中文字体，返回 ArrayBuffer
-let cachedFontData = null
-
-async function loadChineseFont(pdfDoc) {
-  // 第一次调用时从主进程读取系统字体
-  if (!cachedFontData) {
-    const result = await window.electronAPI.readSystemFont()
-    if (!result.success) {
-      throw new Error('无法加载中文字体：' + result.error)
-    }
-    cachedFontData = new Uint8Array(result.data)
-  }
-
-  pdfDoc.registerFontkit(fontkit)
-  // 不使用 subset:true，避免 createSubset 报错；完整嵌入字体
-  const font = await pdfDoc.embedFont(cachedFontData)
-  return font
 }
 
 export async function mergePdfs(fileDataList) {
@@ -180,149 +155,31 @@ export async function reorderPages(fileData, newOrder) {
   return Array.from(bytes)
 }
 
-// 添加文字到指定页面指定位置
+// 添加文字到指定页面指定位置（通过 IPC 在主进程执行，使用中文字体）
 export async function addText(fileData, options) {
-  const {
-    pageIndex,
-    text,
-    x,
-    y,
-    fontSize = 16,
-    color = { r: 0, g: 0, b: 0 },
-    opacity = 1,
-  } = options
-
-  const pdfDoc = await loadPdf(fileData)
-  const pages = pdfDoc.getPages()
-
-  if (pageIndex < 0 || pageIndex >= pages.length) {
-    throw new Error(`无效的页码: ${pageIndex + 1}`)
+  const result = await window.electronAPI.pdfAddText(fileData, options)
+  if (!result.success) {
+    throw new Error(result.error)
   }
-
-  const page = pages[pageIndex]
-  const { width, height } = page.getSize()
-
-  // 加载支持中文的系统字体
-  const font = await loadChineseFont(pdfDoc)
-
-  page.drawText(text, {
-    x,
-    y,
-    size: fontSize,
-    font,
-    color: rgb(color.r, color.g, color.b),
-    opacity,
-  })
-
-  const bytes = await pdfDoc.save()
-  return Array.from(bytes)
+  return result.data
 }
 
-// 给所有页面添加水印
+// 给所有页面添加水印（通过 IPC 在主进程执行）
 export async function addWatermark(fileData, options) {
-  const {
-    text,
-    fontSize = 60,
-    opacity = 0.2,
-    color = { r: 0.8, g: 0.8, b: 0.8 },
-    rotation = -45,
-    position = 'center',
-  } = options
-
-  const pdfDoc = await loadPdf(fileData)
-  const pages = pdfDoc.getPages()
-  // 加载支持中文的系统字体
-  const font = await loadChineseFont(pdfDoc)
-
-  for (const page of pages) {
-    const { width, height } = page.getSize()
-    const textWidth = font.widthOfTextAtSize(text, fontSize)
-
-    let x, y
-    if (position === 'center') {
-      x = width / 2 - textWidth / 2
-      y = height / 2
-    } else if (position === 'top-left') {
-      x = 50
-      y = height - 50
-    } else if (position === 'bottom-right') {
-      x = width - textWidth - 50
-      y = 50
-    } else {
-      x = width / 2 - textWidth / 2
-      y = height / 2
-    }
-
-    page.drawText(text, {
-      x,
-      y,
-      size: fontSize,
-      font,
-      color: rgb(color.r, color.g, color.b),
-      opacity,
-      rotate: degrees(rotation),
-    })
+  const result = await window.electronAPI.pdfAddWatermark(fileData, options)
+  if (!result.success) {
+    throw new Error(result.error)
   }
-
-  const bytes = await pdfDoc.save()
-  return Array.from(bytes)
+  return result.data
 }
 
-// 给所有页面添加页码
+// 给所有页面添加页码（通过 IPC 在主进程执行）
 export async function addPageNumbers(fileData, options = {}) {
-  const {
-    position = 'bottom-center',
-    fontSize = 12,
-    color = { r: 0, g: 0, b: 0 },
-    startNumber = 1,
-    format = '{page}',
-  } = options
-
-  const pdfDoc = await loadPdf(fileData)
-  const pages = pdfDoc.getPages()
-  // 加载支持中文的系统字体（用于"第 N 页"等中文格式）
-  const font = await loadChineseFont(pdfDoc)
-
-  pages.forEach((page, idx) => {
-    const { width, height } = page.getSize()
-    const pageNum = startNumber + idx
-    const text = format.replace('{page}', pageNum).replace('{total}', pages.length)
-
-    const textWidth = font.widthOfTextAtSize(text, fontSize)
-    const margin = 30
-
-    let x, y
-    if (position === 'bottom-center') {
-      x = width / 2 - textWidth / 2
-      y = margin
-    } else if (position === 'bottom-right') {
-      x = width - textWidth - margin
-      y = margin
-    } else if (position === 'bottom-left') {
-      x = margin
-      y = margin
-    } else if (position === 'top-center') {
-      x = width / 2 - textWidth / 2
-      y = height - margin - fontSize
-    } else if (position === 'top-right') {
-      x = width - textWidth - margin
-      y = height - margin - fontSize
-    } else if (position === 'top-left') {
-      x = margin
-      y = height - margin - fontSize
-    }
-
-    page.drawText(text, {
-      x,
-      y,
-      size: fontSize,
-      font,
-      color: rgb(color.r, color.g, color.b),
-    })
-  })
-
-  const bytes = await pdfDoc.save()
-  return Array.from(bytes)
+  const result = await window.electronAPI.pdfAddPageNumbers(fileData, options)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  return result.data
 }
 
 // 压缩 PDF（降低图片质量以减小体积）
