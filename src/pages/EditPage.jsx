@@ -1,5 +1,12 @@
-import React, { useState } from 'react'
-import { getPdfInfo, rotatePages, deletePages, extractPages, reorderPages } from '../utils/pdfUtils.js'
+import React, { useState, useEffect, useRef } from 'react'
+import {
+  getPdfInfo,
+  rotatePages,
+  deletePages,
+  extractPages,
+  reorderPages,
+  renderPdfToImages,
+} from '../utils/pdfUtils.js'
 
 function EditPage() {
   const [file, setFile] = useState(null)
@@ -10,6 +17,28 @@ function EditPage() {
   const [status, setStatus] = useState(null)
   const [activeTab, setActiveTab] = useState('rotate')
   const [newOrder, setNewOrder] = useState('')
+  const [pageImages, setPageImages] = useState([])
+  const [renderingPreview, setRenderingPreview] = useState(false)
+  const [previewScale, setPreviewScale] = useState(0.5)
+
+  const renderPreview = async (data) => {
+    if (!data) return
+    setRenderingPreview(true)
+    try {
+      const images = await renderPdfToImages(data, previewScale)
+      setPageImages(images)
+    } catch (e) {
+      console.error('预览渲染失败:', e)
+      setPageImages([])
+    }
+    setRenderingPreview(false)
+  }
+
+  useEffect(() => {
+    if (currentData) {
+      renderPreview(currentData)
+    }
+  }, [currentData, previewScale])
 
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({
@@ -104,7 +133,7 @@ function EditPage() {
       const info = await getPdfInfo(result)
       setPageCount(info.pageCount)
       setSelectedPages(new Set())
-      setStatus({ type: 'success', message: `已删除 ${selectedPages.size} 页，剩余 ${info.pageCount} 页` })
+      setStatus({ type: 'success', message: `已删除，剩余 ${info.pageCount} 页` })
     } catch (error) {
       setStatus({ type: 'error', message: `删除失败: ${error.message}` })
     }
@@ -184,6 +213,7 @@ function EditPage() {
       const result = await reorderPages(currentData, order)
       setCurrentData(result)
       setSelectedPages(new Set())
+      setNewOrder('')
       setStatus({ type: 'success', message: '页面已重新排序' })
     } catch (error) {
       setStatus({ type: 'error', message: `排序失败: ${error.message}` })
@@ -223,6 +253,7 @@ function EditPage() {
     setPageCount(0)
     setSelectedPages(new Set())
     setStatus(null)
+    setPageImages([])
   }
 
   const tabItems = [
@@ -236,7 +267,7 @@ function EditPage() {
     <div className="page-container">
       <div className="page-header">
         <h1>✏️ 编辑 PDF</h1>
-        <p>旋转、删除、提取和重新排序 PDF 页面</p>
+        <p>旋转、删除、提取和重新排序 PDF 页面，支持实时预览</p>
       </div>
 
       <div className="action-bar">
@@ -283,7 +314,7 @@ function EditPage() {
         <div className="edit-layout">
           <div className="page-thumbnails-panel">
             <div className="panel-header">
-              <span>页面列表</span>
+              <span>页面预览</span>
               <div className="panel-actions">
                 <button className="mini-btn" onClick={selectAllPages} disabled={processing}>
                   全选
@@ -294,21 +325,57 @@ function EditPage() {
               </div>
             </div>
             <div className="page-thumbnails">
-              {Array.from({ length: pageCount }, (_, i) => (
-                <div
-                  key={i}
-                  className={`page-thumbnail ${selectedPages.has(i) ? 'selected' : ''}`}
-                  onClick={() => togglePageSelection(i)}
-                >
-                  <div className="thumbnail-number">{i + 1}</div>
-                  <div className="thumbnail-preview">
-                    <div className="page-icon">📄</div>
-                  </div>
+              {renderingPreview ? (
+                <div className="preview-loading">
+                  <div className="spinner" />
+                  <p>渲染预览中...</p>
                 </div>
-              ))}
+              ) : pageImages.length > 0 ? (
+                pageImages.map((img, i) => (
+                  <div
+                    key={i}
+                    className={`page-thumbnail ${selectedPages.has(i) ? 'selected' : ''}`}
+                    onClick={() => togglePageSelection(i)}
+                  >
+                    <div className="thumbnail-number">{i + 1}</div>
+                    <div className="thumbnail-preview">
+                      <img src={img.url} alt={`第 ${i + 1} 页`} />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                Array.from({ length: pageCount }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`page-thumbnail ${selectedPages.has(i) ? 'selected' : ''}`}
+                    onClick={() => togglePageSelection(i)}
+                  >
+                    <div className="thumbnail-number">{i + 1}</div>
+                    <div className="thumbnail-preview">
+                      <div className="page-icon">📄</div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
             <div className="panel-footer">
-              已选择 {selectedPages.size} 页
+              已选择 {selectedPages.size} 页 · 缩放 {Math.round(previewScale * 100)}%
+              <div className="zoom-controls">
+                <button
+                  className="mini-btn"
+                  onClick={() => setPreviewScale(Math.max(0.2, previewScale - 0.1))}
+                  disabled={processing}
+                >
+                  -
+                </button>
+                <button
+                  className="mini-btn"
+                  onClick={() => setPreviewScale(Math.min(1.5, previewScale + 0.1))}
+                  disabled={processing}
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
