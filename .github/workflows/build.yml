@@ -1,0 +1,97 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            artifact_name: PDF Master
+          - os: windows-latest
+            platform: win
+            artifact_name: PDF Master
+          - os: ubuntu-latest
+            platform: linux
+            artifact_name: PDF Master
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 Linux 打包依赖
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
+            libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0 \
+            libgdk-pixbuf2.0-0 libgtk-3-0
+
+      - name: 构建前端 + 打包 Electron 应用
+        run: npm run electron:build:${{ matrix.platform }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上传产物（macOS）
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-Master-mac
+          path: |
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: ignore
+
+      - name: 上传产物（Windows）
+        if: matrix.platform == 'win'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-Master-win
+          path: |
+            release/*.exe
+          if-no-files-found: ignore
+
+      - name: 上传产物（Linux）
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF-Master-linux
+          path: |
+            release/*.deb
+            release/*.AppImage
+          if-no-files-found: ignore
+
+      - name: 发布到 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.deb
+            release/*.AppImage
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
