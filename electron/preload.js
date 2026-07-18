@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFile: (filePath) => ipcRenderer.invoke('fs:readFile', filePath),
   writeFile: (filePath, data) => ipcRenderer.invoke('fs:writeFile', filePath, data),
   writeFiles: (files) => ipcRenderer.invoke('fs:writeFiles', files),
+  readSystemFont: () => ipcRenderer.invoke('fs:readSystemFont'),
 })

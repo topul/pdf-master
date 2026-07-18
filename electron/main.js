@@ -106,3 +106,42 @@ ipcMain.handle('fs:writeFiles', async (event, files) => {
     return { success: false, error: error.message }
   }
 })
+
+// 读取系统中文字体，返回 ArrayBuffer
+// macOS: PingFang.ttc; Windows: msyh.ttc (微软雅黑); Linux: 常见中文字体
+ipcMain.handle('fs:readSystemFont', async () => {
+  const candidates = {
+    darwin: [
+      '/System/Library/Fonts/PingFang.ttc',
+      '/System/Library/Fonts/STHeiti Medium.ttc',
+      '/Library/Fonts/Arial Unicode.ttf',
+    ],
+    win32: [
+      'C:/Windows/Fonts/msyh.ttc',
+      'C:/Windows/Fonts/msyhbd.ttc',
+      'C:/Windows/Fonts/simhei.ttf',
+      'C:/Windows/Fonts/simsun.ttc',
+    ],
+    linux: [
+      '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+      '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+      '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+      '/usr/share/fonts/opentype/noto/NotoSansCJK.ttc',
+    ],
+  }
+
+  const platform = process.platform
+  const paths = candidates[platform] || candidates.linux
+
+  for (const fontPath of paths) {
+    try {
+      await fs.access(fontPath)
+      const data = await fs.readFile(fontPath)
+      return { success: true, data: Array.from(new Uint8Array(data)), path: fontPath }
+    } catch {
+      // 当前路径不存在，继续尝试下一个
+    }
+  }
+
+  return { success: false, error: '未找到可用的中文字体' }
+})

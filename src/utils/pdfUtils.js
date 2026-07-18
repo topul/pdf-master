@@ -1,9 +1,28 @@
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 
 export async function loadPdf(fileData) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
   return pdfDoc
+}
+
+// 加载系统中文字体，返回 ArrayBuffer
+let cachedFontData = null
+
+async function loadChineseFont(pdfDoc) {
+  // 第一次调用时从主进程读取系统字体
+  if (!cachedFontData) {
+    const result = await window.electronAPI.readSystemFont()
+    if (!result.success) {
+      throw new Error('无法加载中文字体：' + result.error)
+    }
+    cachedFontData = new Uint8Array(result.data)
+  }
+
+  pdfDoc.registerFontkit(fontkit)
+  const font = await pdfDoc.embedFont(cachedFontData, { subset: true })
+  return font
 }
 
 export async function mergePdfs(fileDataList) {
@@ -177,7 +196,8 @@ export async function addText(fileData, options) {
   const page = pages[pageIndex]
   const { width, height } = page.getSize()
 
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  // 加载支持中文的系统字体
+  const font = await loadChineseFont(pdfDoc)
 
   page.drawText(text, {
     x,
@@ -205,7 +225,8 @@ export async function addWatermark(fileData, options) {
 
   const pdfDoc = await loadPdf(fileData)
   const pages = pdfDoc.getPages()
-  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+  // 加载支持中文的系统字体
+  const font = await loadChineseFont(pdfDoc)
 
   for (const page of pages) {
     const { width, height } = page.getSize()
@@ -253,7 +274,8 @@ export async function addPageNumbers(fileData, options = {}) {
 
   const pdfDoc = await loadPdf(fileData)
   const pages = pdfDoc.getPages()
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  // 加载支持中文的系统字体（用于"第 N 页"等中文格式）
+  const font = await loadChineseFont(pdfDoc)
 
   pages.forEach((page, idx) => {
     const { width, height } = page.getSize()
