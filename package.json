@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "跨平台 PDF 处理桌面应用，支持合并、拆分、编辑等功能",
   "main": "electron/main.js",
-  "author": "PDF Master",
+  "author": {
+    "name": "PDF Master",
+    "email": "pdf-master@example.com"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "vite",

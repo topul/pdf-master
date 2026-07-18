@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -18,13 +18,21 @@ jobs:
         include:
           - os: macos-latest
             platform: mac
-            artifact_name: PDF Master
+            artifact: PDF-Master-mac
+            files: |
+              release/*.dmg
+              release/*.zip
           - os: windows-latest
             platform: win
-            artifact_name: PDF Master
+            artifact: PDF-Master-win
+            files: |
+              release/*.exe
           - os: ubuntu-latest
             platform: linux
-            artifact_name: PDF Master
+            artifact: PDF-Master-linux
+            files: |
+              release/*.deb
+              release/*.AppImage
 
     steps:
       - name: 检出代码
@@ -43,7 +51,6 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          # Ubuntu 24.04 下 libasound2 已改名为 libasound2t64，用 /etc/apt/sources.list 兜底
           sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 \
             libcups2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
             libxrandr2 libgbm1 libpangocairo-1.0-0 \
@@ -51,49 +58,60 @@ jobs:
             libasound2t64 || sudo apt-get install -y libasound2 || true
 
       - name: 构建前端 + 打包 Electron 应用
-        run: npm run electron:build:${{ matrix.platform }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run electron:build:${{ matrix.platform }} -- --publish never
 
-      - name: 上传产物（macOS）
-        if: matrix.platform == 'mac'
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: PDF-Master-mac
-          path: |
-            release/*.dmg
-            release/*.zip
-          if-no-files-found: ignore
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
 
-      - name: 上传产物（Windows）
-        if: matrix.platform == 'win'
-        uses: actions/upload-artifact@v4
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 下载所有产物
+        uses: actions/download-artifact@v4
         with:
-          name: PDF-Master-win
-          path: |
-            release/*.exe
-          if-no-files-found: ignore
+          path: artifacts
 
-      - name: 上传产物（Linux）
-        if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v4
+      - name: 展平文件结构
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+          ls -la release/
+
+      - name: 删除已存在的同名 Release
+        uses: actions/github-script@v7
         with:
-          name: PDF-Master-linux
-          path: |
-            release/*.deb
-            release/*.AppImage
-          if-no-files-found: ignore
+          script: |
+            const tag = context.ref.replace('refs/tags/', '')
+            try {
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag
+              })
+              await github.rest.repos.deleteRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.data.id
+              })
+              console.log(`Deleted existing release ${release.data.id}`)
+            } catch (e) {
+              if (e.status === 404) {
+                console.log('No existing release found, creating new one')
+              } else {
+                throw e
+              }
+            }
 
-      - name: 发布到 Release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: 发布到 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release/*.dmg
-            release/*.zip
-            release/*.exe
-            release/*.deb
-            release/*.AppImage
+          files: release/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
