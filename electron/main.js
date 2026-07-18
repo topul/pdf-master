@@ -2,7 +2,24 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
 const { PDFDocument, rgb, degrees } = require('pdf-lib')
-const fontkit = require('@pdf-lib/fontkit')
+const _fontkitImport = require('@pdf-lib/fontkit')
+
+// 兼容 @pdf-lib/fontkit 的导出（CJS/ESM 互操作）
+const realFontkit = _fontkitImport.default || _fontkitImport
+
+// 包装 fontkit：TTC 字体集合自动取第一个字体
+// pdf-lib 的 embedFont 内部调用 fontkit.create(buffer)
+// 对 TTC 返回 FontCollection（有 .fonts 数组），而非单个 Font
+// 这里包装成返回单个 Font，确保 createSubset/layout 方法可用
+const fontkit = {
+  create: (data, opts) => {
+    const result = realFontkit.create(data, opts)
+    if (result && Array.isArray(result.fonts) && result.fonts.length > 0) {
+      return result.fonts[0]
+    }
+    return result
+  },
+}
 
 let mainWindow
 
@@ -195,9 +212,9 @@ async function getChineseFont(pdfDoc) {
   }
 
   pdfDoc.registerFontkit(fontkit)
-  // TTC 集合字体：用 fontkit.create 返回第 0 个字体
-  // embedFont 内部已支持 TTC，直接传 Buffer 即可
-  return await pdfDoc.embedFont(cachedFontBuffer, { subset: true })
+  // 不使用 subset:true，先确保 embedFont 能正确处理 TTC
+  // 字体方法 (layout/createSubset) 由包装后的 fontkit 正确提供
+  return await pdfDoc.embedFont(cachedFontBuffer)
 }
 
 // 添加文字
