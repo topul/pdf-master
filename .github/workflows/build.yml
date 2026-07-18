@@ -43,10 +43,12 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
+          # Ubuntu 24.04 下 libasound2 已改名为 libasound2t64，用 /etc/apt/sources.list 兜底
           sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 \
             libcups2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
-            libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0 \
-            libgdk-pixbuf2.0-0 libgtk-3-0
+            libxrandr2 libgbm1 libpangocairo-1.0-0 \
+            libgdk-pixbuf2.0-0 libgtk-3-0 \
+            libasound2t64 || sudo apt-get install -y libasound2 || true
 
       - name: 构建前端 + 打包 Electron 应用
         run: npm run electron:build:${{ matrix.platform }}
