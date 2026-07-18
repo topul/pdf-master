@@ -87,7 +87,7 @@ function HomePage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-8 lg:px-10 lg:py-12">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-8 lg:p-12">
+      <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-8 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 lg:p-12">
         <div className="absolute inset-0 -z-10 opacity-60">
           <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -bottom-24 -left-10 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -96,7 +96,7 @@ function HomePage() {
           <Sparkles className="h-3 w-3" />
           跨平台 · 本地处理 · 隐私安全
         </Badge>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 lg:text-4xl">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white lg:text-4xl">
           一站式 PDF 处理工具
         </h1>
         <p className="mt-3 max-w-2xl text-base text-muted-foreground lg:text-lg">

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import ThemeToggle from '@/components/ThemeToggle.jsx'
 import MergePage from './pages/MergePage.jsx'
 import SplitPage from './pages/SplitPage.jsx'
 import EditPage from './pages/EditPage.jsx'
@@ -131,12 +132,13 @@ function App() {
           ))}
         </nav>
 
-        {/* 折叠按钮 */}
-        <div className="border-t p-2">
+        {/* 底部操作区 */}
+        <div className="flex items-center gap-1 border-t p-2">
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-3 px-3 font-normal text-muted-foreground"
+            className="flex-1 justify-start gap-3 px-3 font-normal text-muted-foreground"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
