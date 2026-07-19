@@ -14,6 +14,15 @@
 - 💧 **添加水印** - 批量给 PDF 页面添加自定义文字水印（支持透明度、旋转、位置）
 - 🔢 **添加页码** - 自动给 PDF 每页添加页码（支持多种格式和位置）
 - 🖨️ **打印 PDF** - 调用系统打印对话框打印 PDF（支持自定义打印范围）
+- 📦 **PDF 压缩** - 三种压缩模式（极速/推荐/强力），减小文件体积
+- 📤 **提取内容** - 提取 PDF 中的文字或图片，支持批量导出
+- 🔐 **加密/解密** - 添加密码保护或移除已有密码
+- 📄 **元数据** - 编辑 PDF 标题、作者、主题等文档信息
+- 🖼️ **图片转 PDF** - 将多张图片合并为 PDF
+- 🖼️ **PDF 转图片** - 将 PDF 每页导出为图片
+
+### 效率工具
+- 📦 **批量处理** - 一次处理多个 PDF，支持批量压缩、加密、提取文字
 
 ### 特点
 - 🔒 **本地处理** - 所有操作均在本地完成，文件不上传云端，保护隐私
@@ -24,7 +33,7 @@
 
 - **前端框架**: React 18 + Vite 5
 - **桌面框架**: Electron 31
-- **PDF 处理**: pdf-lib（编辑）+ pdfjs-dist（预览渲染）
+- **PDF 处理**: pdf-lib（编辑）+ pdfjs-dist（预览渲染）+ qpdf-wasm（压缩/加密）
 - **路由**: React Router v6
 - **打包**: electron-builder
 
@@ -73,7 +82,14 @@ pdf-master/
 │   │   ├── TextPage.jsx       # 添加文字
 │   │   ├── WatermarkPage.jsx  # 添加水印
 │   │   ├── PageNumberPage.jsx # 添加页码
-│   │   └── PrintPage.jsx      # 打印 PDF
+│   │   ├── PrintPage.jsx      # 打印 PDF
+│   │   ├── CompressPage.jsx   # PDF 压缩
+│   │   ├── ExtractPage.jsx    # 提取内容（文字/图片）
+│   │   ├── EncryptPage.jsx    # 加密/解密
+│   │   ├── MetadataPage.jsx   # 元数据编辑
+│   │   ├── ImageToPdfPage.jsx # 图片转 PDF
+│   │   ├── PdfToImagePage.jsx # PDF 转图片
+│   │   └── BatchPage.jsx      # 批量处理
 │   ├── styles/
 │   │   └── global.css         # 全局样式
 │   ├── utils/
