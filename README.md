@@ -23,6 +23,10 @@
 
 ### 效率工具
 - 📦 **批量处理** - 一次处理多个 PDF，支持批量压缩、加密、提取文字
+- ✍️ **PDF 签名** - 手写签名并添加到 PDF 指定位置（支持颜色、粗细、多签名）
+- 📝 **填写表单** - 填写 PDF AcroForm 表单域（文本框、复选框、单选框、下拉框）
+- 🔖 **书签管理** - 查看、添加、编辑、删除 PDF 书签/目录
+- ✂️ **页面裁剪** - 调整 PDF 页面边距，实时预览裁剪效果
 
 ### 特点
 - 🔒 **本地处理** - 所有操作均在本地完成，文件不上传云端，保护隐私
@@ -89,7 +93,11 @@ pdf-master/
 │   │   ├── MetadataPage.jsx   # 元数据编辑
 │   │   ├── ImageToPdfPage.jsx # 图片转 PDF
 │   │   ├── PdfToImagePage.jsx # PDF 转图片
-│   │   └── BatchPage.jsx      # 批量处理
+│   │   ├── BatchPage.jsx      # 批量处理
+│   │   ├── SignaturePage.jsx # PDF 签名
+│   │   ├── FormPage.jsx      # 填写表单
+│   │   ├── BookmarkPage.jsx   # 书签管理
+│   │   └── CropPage.jsx      # 页面裁剪
 │   ├── styles/
 │   │   └── global.css         # 全局样式
 │   ├── utils/
