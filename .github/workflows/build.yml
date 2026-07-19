@@ -41,7 +41,7 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: 设置 Python (Windows)
@@ -68,7 +68,7 @@ jobs:
         env:
           npm_config_runtime_version: 31
           npm_config_build_from_source: true
-        run: npm ci --foreground-scripts
+        run: npm install --no-audit --no-fund --foreground-scripts
 
       - name: 诊断 muhammara binding
         shell: bash
