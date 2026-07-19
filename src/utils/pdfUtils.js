@@ -632,7 +632,7 @@ export async function addBookmark(fileData, bookmark) {
 
   // 创建新的 outline item
   const newItem = context.obj({
-    Title: PDFHexString.of(Buffer.from(bookmark.title, 'utf-8').toString('hex')),
+    Title: PDFHexString.of(stringToUtf16Hex(bookmark.title)),
     Parent: outlinesRef,
     Dest: destArray,
   })
@@ -691,7 +691,7 @@ export async function updateBookmark(fileData, bookmarkId, updates) {
   if (cur) {
     const item = pdfDoc.context.lookup(cur)
     if (item && item.dict && updates.title) {
-      item.dict.set(PDFName.of('Title'), PDFHexString.of(Buffer.from(updates.title, 'utf-8').toString('hex')))
+      item.dict.set(PDFName.of('Title'), PDFHexString.of(stringToUtf16Hex(updates.title)))
     }
   }
 
@@ -799,20 +799,34 @@ export async function cropPdf(fileData, margins) {
   return Array.from(pdfBytes)
 }
 
-// 辅助：解码 PDF Hex 字符串
+// 辅助：字符串转 UTF-16BE hex（PDF 标准）
+function stringToUtf16Hex(str) {
+  if (!str) return ''
+  // 添加 UTF-16BE BOM 标记（FEFF），告诉阅读器这是 UTF-16
+  const bytes = [0xfe, 0xff]
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i)
+    bytes.push((code >> 8) & 0xff, code & 0xff)
+  }
+  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// 辅助：解码 PDF Hex 字符串（UTF-16BE）
 function decodeHex(hex) {
   if (!hex) return ''
-  let str = ''
+  const bytes = []
   for (let i = 0; i < hex.length; i += 2) {
-    str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
+    bytes.push(parseInt(hex.substr(i, 2), 16))
   }
-  // 尝试 UTF-16BE 解码（PDF 标准）
+  // 跳过 BOM 标记
+  let start = 0
+  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
+    start = 2
+  }
   try {
-    const bytes = new Uint8Array(str.length)
-    for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i)
-    return new TextDecoder('utf-16be').decode(bytes)
+    return new TextDecoder('utf-16be').decode(new Uint8Array(bytes.slice(start)))
   } catch {
-    return str
+    return String.fromCharCode(...bytes)
   }
 }
 
