@@ -278,7 +278,7 @@ function BatchPage() {
                               → {formatSize(r.result.length)}（{((1 - r.result.length / file.size) * 100).toFixed(1)}%）
                             </span>
                           )}
-                          {r?.status === 'success' && operation === 'extractText' && r.result && (
+                          {r?.status === 'success' && operation === 'extractText' && r.result?.fullText && (
                             <span className="ml-2 text-emerald-500">
                               {r.result.fullText.length} 字
                             </span>
