@@ -16,7 +16,8 @@
     "electron:build": "vite build && electron-builder",
     "electron:build:linux": "vite build && electron-builder --linux",
     "electron:build:win": "vite build && electron-builder --win",
-    "electron:build:mac": "vite build && electron-builder --mac"
+    "electron:build:mac": "vite build && electron-builder --mac",
+    "postinstall": "electron-rebuild -f -o muhammara"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "^1.1.1",
@@ -35,7 +36,9 @@
     "autoprefixer": "^10.5.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "core-util-is": "^1.0.3",
     "lucide-react": "^1.25.0",
+    "muhammara": "^6.0.5",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.6.82",
     "postcss": "^8.5.19",
@@ -49,6 +52,7 @@
     "canvas": "file:./canvas-stub"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
@@ -68,17 +72,18 @@
     "files": [
       "electron/**/*",
       "dist/**/*",
-      "package.json",
-      "!node_modules/**/*"
+      "package.json"
     ],
     "asar": true,
-    "asarUnpack": [],
+    "asarUnpack": [
+      "**/node_modules/muhammara/**"
+    ],
     "compression": "maximum",
     "removePackageScripts": true,
     "removePackageKeywords": true,
     "nodeGypRebuild": false,
     "buildDependenciesFromSource": false,
-    "npmRebuild": false,
+    "npmRebuild": true,
     "electronLanguages": [
       "zh-CN",
       "en-US"
