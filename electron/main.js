@@ -505,10 +505,16 @@ ipcMain.handle('pdf:extractImages', async (event, args) => {
     const PDFArray = pdfLib.PDFArray
 
     for (const page of pages) {
-      const resources = page.node.XObject()
-      if (!resources) continue
+      const resourcesDict = page.node.get(PDFName.of('Resources'))
+      if (!resourcesDict) continue
 
-      const entries = resources.entries()
+      const xobjects = resourcesDict.get(PDFName.of('XObject'))
+      if (!xobjects) continue
+
+      const xobjDict = pdfDoc.context.lookup(xobjects)
+      if (!xobjDict?.dict) continue
+
+      const entries = xobjDict.dict.entries()
       for (const [name, ref] of entries) {
         const refStr = ref.toString()
         if (seenRefs.has(refStr)) continue
@@ -516,8 +522,8 @@ ipcMain.handle('pdf:extractImages', async (event, args) => {
 
         try {
           const xobj = pdfDoc.context.lookup(ref)
-          if (!xobj) continue
-          const subtype = xobj.dict?.get(PDFName.of('Subtype'))
+          if (!xobj || !xobj.dict) continue
+          const subtype = xobj.dict.get(PDFName.of('Subtype'))
           if (!subtype || subtype.encodedName !== 'Image') continue
 
           const dict = xobj.dict

@@ -133,10 +133,17 @@ function BatchPage() {
     if (abortRef.current) {
       setStatus({ type: 'info', message: `已停止：成功 ${successCount}，失败 ${failCount}` })
     } else {
-      setStatus({
-        type: successCount > 0 ? 'success' : 'error',
-        message: `完成：成功 ${successCount}，失败 ${failCount}`,
-      })
+      if (successCount > 0) {
+        setStatus({
+          type: 'success',
+          message: `处理完成！成功 ${successCount}，失败 ${failCount}。点击「全部导出」保存文件。`,
+        })
+        setTimeout(() => {
+          handleSaveAll()
+        }, 800)
+      } else {
+        setStatus({ type: 'error', message: `处理完成：全部失败（${failCount} 个）` })
+      }
     }
   }
 
