@@ -52,25 +52,10 @@ jobs:
             libcups2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
             libxrandr2 libgbm1 libpangocairo-1.0-0 \
             libgdk-pixbuf2.0-0 libgtk-3-0 \
-            || sudo apt-get install -y libasound2 || true
+            libasound2t64 || sudo apt-get install -y libasound2 || true
 
       - name: 安装依赖
-        env:
-          # 让 node-pre-gyp 下载 electron 31 的预编译 muhammara 二进制，免去本地编译
-          npm_config_runtime: electron
-          npm_config_target: 31.3.1
-          npm_config_target_arch: x64
-          npm_config_disturl: https://electronjs.org/headers
-        run: npm install --no-audit --no-fund --foreground-scripts
-
-      - name: 诊断 muhammara binding
-        shell: bash
-        run: |
-          echo "=== muhammara binding 文件 ==="
-          ls -la node_modules/muhammara/binding/ 2>/dev/null || echo "(no binding dir)"
-          echo ""
-          echo "=== electron 版本 ==="
-          npx electron --version || true
+        run: npm install --no-audit --no-fund
 
       - name: 构建前端 + 打包 Electron 应用
         env:

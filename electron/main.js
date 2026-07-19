@@ -2,7 +2,6 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
 const { PDFDocument, rgb, degrees } = require('pdf-lib')
-const muhammara = require('muhammara')
 const _fontkitImport = require('@pdf-lib/fontkit')
 
 // 兼容 @pdf-lib/fontkit 的导出（CJS/ESM 互操作）
@@ -345,69 +344,10 @@ ipcMain.handle('pdf:addPageNumbers', async (event, args) => {
   }
 })
 
-// PDF 加密（使用 muhammara，pdf-lib 的 save({encrypt}) 在 1.17.1 上不生效）
-// 权限位参考 PDF 32000-2008 标准，与 muhammara/lib/recipe/encrypt.js 一致
-function computeUserProtectionFlag(options) {
-  let flag = 0
-  // 默认全部允许；options.allowXxx === false 才禁用
-  if (options.allowPrint !== false) {
-    flag |= 4 // 允许打印
-    flag |= 2048 // 允许高分辨率打印
-  }
-  if (options.allowModify !== false) flag |= 8 // 允许修改
-  if (options.allowCopy !== false) flag |= 16 // 允许复制
-  if (options.allowAnnotate !== false) flag |= 32 // 允许注释
-  if (options.allowFillForms !== false) flag |= 256 // 允许填写表单
-  if (options.allowAccessibility !== false) flag |= 512 // 允许内容可访问性
-  if (options.allowAssembly !== false) flag |= 1024 // 允许文档组装
-  return flag
-}
-
-ipcMain.handle('pdf:encrypt', async (event, args) => {
-  try {
-    const { fileData, options } = args
-    const userPassword = options.userPassword || ''
-    const ownerPassword = options.ownerPassword || options.userPassword || ''
-    const userProtectionFlag = computeUserProtectionFlag(options)
-
-    // 流式：Buffer -> Buffer，不依赖临时文件
-    const inStream = new muhammara.PDFRStreamForBuffer(
-      Buffer.from(new Uint8Array(fileData))
-    )
-    const outStream = new muhammara.PDFWStreamForBuffer()
-    muhammara.recrypt(inStream, outStream, {
-      userPassword,
-      ownerPassword,
-      userProtectionFlag,
-    })
-
-    if (!outStream.buffer || outStream.buffer.length === 0) {
-      throw new Error('加密失败：未产生输出')
-    }
-    return { success: true, data: Array.from(outStream.buffer) }
-  } catch (error) {
-    return { success: false, error: error.message }
-  }
-})
-
-// PDF 解密：用 muhammara 读取加密 PDF（带密码）后复制页面到新文档（无加密）
-ipcMain.handle('pdf:decrypt', async (event, args) => {
-  try {
-    const { fileData, password } = args
-
-    const inStream = new muhammara.PDFRStreamForBuffer(
-      Buffer.from(new Uint8Array(fileData))
-    )
-    const outStream = new muhammara.PDFWStreamForBuffer()
-    const writer = muhammara.createWriter(outStream)
-    writer.appendPDFPagesFromPDF(inStream, { password: password || '' })
-    writer.end()
-
-    if (!outStream.buffer || outStream.buffer.length === 0) {
-      throw new Error('解密失败：未产生输出，请确认密码是否正确')
-    }
-    return { success: true, data: Array.from(outStream.buffer) }
-  } catch (error) {
-    return { success: false, error: error.message }
-  }
-})
+// 注：PDF 加密/解密功能已暂时移除
+// 原因：pdf-lib 1.17.1 的 save({ encrypt }) 不会真正写入 /Encrypt 字典；
+//       改用 native 模块（muhammara 等）会引入 node-gyp 依赖、锁死 electron 版本，
+//       不利于跨平台打包和后续升级。后续如需恢复可考虑：
+//       1) 调用外部 qpdf 二进制（需随应用分发）
+//       2) 等待 pdf-lib 修复或迁移到 @cantoo/pdf-lib 在新版上的实现
+//       3) 使用 WASM 方案（如 qpdf-wasm）

@@ -125,24 +125,6 @@ export async function setPdfMetadata(fileData, metadata) {
   return Array.from(bytes)
 }
 
-// ===== PDF 加密（主进程执行）=====
-export async function encryptPdf(fileData, options) {
-  const result = await window.electronAPI.pdfEncrypt(fileData, options)
-  if (!result.success) {
-    throw new Error(result.error)
-  }
-  return result.data
-}
-
-// ===== PDF 解密（主进程执行）=====
-export async function decryptPdf(fileData, password) {
-  const result = await window.electronAPI.pdfDecrypt(fileData, password)
-  if (!result.success) {
-    throw new Error(result.error)
-  }
-  return result.data
-}
-
 export async function loadPdf(fileData) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)

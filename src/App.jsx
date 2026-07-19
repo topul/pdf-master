@@ -15,7 +15,6 @@ import {
   ImagePlus,
   Image as ImageIcon,
   FileCog,
-  Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -31,7 +30,6 @@ import PageNumberPage from './pages/PageNumberPage.jsx'
 import ImageToPdfPage from './pages/ImageToPdfPage.jsx'
 import PdfToImagePage from './pages/PdfToImagePage.jsx'
 import MetadataPage from './pages/MetadataPage.jsx'
-import EncryptPage from './pages/EncryptPage.jsx'
 
 function App() {
   const location = useLocation()
@@ -60,7 +58,6 @@ function App() {
         { path: '/watermark', label: '添加水印', icon: Droplet, desc: '批量水印' },
         { path: '/pagenum', label: '添加页码', icon: Hash, desc: '自动页码' },
         { path: '/metadata', label: '元数据', icon: FileCog, desc: '编辑文档信息' },
-        { path: '/encrypt', label: '加密/解密', icon: Lock, desc: '密码保护' },
         { path: '/print', label: '打印 PDF', icon: Printer, desc: '调用系统打印' },
       ],
     },
@@ -182,7 +179,6 @@ function App() {
             <Route path="/watermark" element={<WatermarkPage />} />
             <Route path="/pagenum" element={<PageNumberPage />} />
             <Route path="/metadata" element={<MetadataPage />} />
-            <Route path="/encrypt" element={<EncryptPage />} />
             <Route path="/print" element={<PrintPage />} />
           </Routes>
         </div>
