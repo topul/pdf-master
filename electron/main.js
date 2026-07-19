@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
+const fsSync = require('fs')
 const { PDFDocument, rgb, degrees } = require('pdf-lib')
 const _fontkitImport = require('@pdf-lib/fontkit')
 
@@ -344,10 +345,112 @@ ipcMain.handle('pdf:addPageNumbers', async (event, args) => {
   }
 })
 
-// 注：PDF 加密/解密功能已暂时移除
-// 原因：pdf-lib 1.17.1 的 save({ encrypt }) 不会真正写入 /Encrypt 字典；
-//       改用 native 模块（muhammara 等）会引入 node-gyp 依赖、锁死 electron 版本，
-//       不利于跨平台打包和后续升级。后续如需恢复可考虑：
-//       1) 调用外部 qpdf 二进制（需随应用分发）
-//       2) 等待 pdf-lib 修复或迁移到 @cantoo/pdf-lib 在新版上的实现
-//       3) 使用 WASM 方案（如 qpdf-wasm）
+// 注：PDF 加密/解密使用 qpdf-wasm（纯 WASM，无 native 依赖，跨平台一致）
+// qpdf 是成熟的 PDF 处理库，加密后能被 Adobe Reader / Chrome / Edge 正确识别
+const createQpdfModule = require('@neslinesli93/qpdf-wasm/dist/qpdf.js')
+let qpdfModulePromise = null
+
+async function getQpdf() {
+  if (!qpdfModulePromise) {
+    const wasmPath = require.resolve('@neslinesli93/qpdf-wasm/dist/qpdf.wasm')
+    const wasmBinary = fsSync.readFileSync(wasmPath)
+    qpdfModulePromise = createQpdfModule({
+      locateFile: () => wasmPath,
+      wasmBinary,
+      noInitialRun: true,
+    })
+  }
+  return qpdfModulePromise
+}
+
+// 在 qpdf 实例上运行一次命令，返回输出文件的 Uint8Array
+// 每次 callMain 后实例状态可能受影响，所以每次都新建实例
+async function runQpdfCommand(inputData, args) {
+  const createModule = createQpdfModule
+  const wasmPath = require.resolve('@neslinesli93/qpdf-wasm/dist/qpdf.wasm')
+  const wasmBinary = fsSync.readFileSync(wasmPath)
+  const qpdf = await createModule({
+    locateFile: () => wasmPath,
+    wasmBinary,
+    noInitialRun: true,
+  })
+
+  qpdf.FS.writeFile('/input.pdf', new Uint8Array(inputData))
+  try {
+    qpdf.callMain([...args, '--', '/input.pdf', '/output.pdf'])
+  } catch (e) {
+    // callMain 出错时抛出字符串错误（来自 qpdf stderr）
+    throw new Error(typeof e === 'string' ? e : e.message || String(e))
+  }
+
+  let outputBytes
+  try {
+    outputBytes = qpdf.FS.readFile('/output.pdf')
+  } catch (e) {
+    throw new Error('qpdf 未产生输出文件，请检查密码或参数')
+  }
+  if (!outputBytes || outputBytes.length === 0) {
+    throw new Error('qpdf 输出为空')
+  }
+  return Array.from(outputBytes)
+}
+
+// 把权限布尔值映射成 qpdf 的 --print/--modify/--extract 等独立 flag
+// 参考 https://qpdf.readthedocs.io/en/stable/encryption.html
+function buildEncryptArgs(options) {
+  const userPassword = options.userPassword || ''
+  const ownerPassword = options.ownerPassword || options.userPassword || ''
+  // qpdf --encrypt user owner bits -- input output
+  // 权限 flag 在 bits 和 -- 之间，每个都是独立的 --xxx=y/n 或 --xxx=none/...
+  const args = ['--encrypt', userPassword, ownerPassword, '256']
+
+  // 打印权限：--print=none | --print=low | --print=full
+  if (options.allowPrint === false) {
+    args.push('--print=none')
+  } else {
+    args.push('--print=full')
+  }
+
+  // 修改权限：--modify=none | --modify=all | --modify=annotate | --modify=form | --modify=assembly
+  // 我们的选项是布尔值，简化处理：allowModify=false 时禁止所有修改
+  if (options.allowModify === false) {
+    // 但 allowFillForms/allowAnnotate/allowAssembly 仍可单独允许
+    let modify = []
+    if (options.allowAnnotate !== false) modify.push('annotate')
+    if (options.allowFillForms !== false) modify.push('form')
+    if (options.allowAssembly !== false) modify.push('assembly')
+    args.push('--modify=' + (modify.length > 0 ? modify.join(',') : 'none'))
+  } else {
+    args.push('--modify=all')
+  }
+
+  // 提取（复制）：--extract=y | --extract=n
+  args.push(options.allowCopy === false ? '--extract=n' : '--extract=y')
+
+  return args
+}
+
+// PDF 加密
+ipcMain.handle('pdf:encrypt', async (event, args) => {
+  try {
+    const { fileData, options } = args
+    const encArgs = buildEncryptArgs(options)
+    const data = await runQpdfCommand(fileData, encArgs)
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message || String(error) }
+  }
+})
+
+// PDF 解密
+ipcMain.handle('pdf:decrypt', async (event, args) => {
+  try {
+    const { fileData, password } = args
+    const decArgs = password ? [`--password=${password}`] : []
+    decArgs.push('--decrypt')
+    const data = await runQpdfCommand(fileData, decArgs)
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message || String(error) }
+  }
+})

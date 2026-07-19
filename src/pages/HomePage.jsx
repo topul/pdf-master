@@ -16,6 +16,7 @@ import {
   ImagePlus,
   Image as ImageIcon,
   FileCog,
+  Lock,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -96,6 +97,13 @@ function HomePage() {
       accent: 'text-sky-600 bg-sky-500/10',
     },
     {
+      path: '/encrypt',
+      icon: Lock,
+      title: '加密 / 解密',
+      description: '添加密码保护，或移除已有密码与权限限制',
+      accent: 'text-red-600 bg-red-500/10',
+    },
+    {
       path: '/print',
       icon: Printer,
       title: '打印 PDF',
@@ -105,7 +113,7 @@ function HomePage() {
   ]
 
   const stats = [
-    { value: '10+', label: 'PDF 工具' },
+    { value: '11+', label: 'PDF 工具' },
     { value: '3', label: '支持平台' },
     { value: '100%', label: '本地处理' },
     { value: '0', label: '文件上传' },
