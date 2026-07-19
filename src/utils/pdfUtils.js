@@ -98,8 +98,8 @@ export async function getPdfMetadata(fileData) {
     author: pdfDoc.getAuthor() || '',
     subject: pdfDoc.getSubject() || '',
     keywords: pdfDoc.getKeywords() || '',
-    creator: pdfDoc.getCreator() || '',
-    producer: pdfDoc.getProducer() || '',
+    creator: pdfDoc.getCreator() || 'PDF Master',
+    producer: pdfDoc.getProducer() || 'PDF Master',
     creationDate: pdfDoc.getCreationDate() || null,
     modificationDate: pdfDoc.getModificationDate() || null,
     pageCount: pdfDoc.getPageCount(),
@@ -116,6 +116,10 @@ export async function setPdfMetadata(fileData, metadata) {
   if (metadata.subject !== undefined) pdfDoc.setSubject(metadata.subject)
   if (metadata.keywords !== undefined) pdfDoc.setKeywords(metadata.keywords)
   if (metadata.creator !== undefined) pdfDoc.setCreator(metadata.creator)
+  // Producer 支持用户自定义，默认 PDF Master
+  pdfDoc.setProducer(metadata.producer || 'PDF Master')
+  // 更新修改时间
+  pdfDoc.setModificationDate(new Date())
 
   const bytes = await pdfDoc.save()
   return Array.from(bytes)

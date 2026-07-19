@@ -348,7 +348,25 @@ ipcMain.handle('pdf:addPageNumbers', async (event, args) => {
 ipcMain.handle('pdf:encrypt', async (event, args) => {
   try {
     const { fileData, options } = args
-    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData))
+    const srcDoc = await PDFDocument.load(new Uint8Array(fileData))
+
+    // 已知问题：直接对已加载的 PDF 调用 save({ encrypt }) 加密不会生效
+    // 修复方式：把页面复制到全新的 PDF 文档，再加密保存
+    const newDoc = await PDFDocument.create()
+    const pages = await newDoc.copyPages(srcDoc, srcDoc.getPageIndices())
+    pages.forEach((page) => newDoc.addPage(page))
+
+    // 保留元数据
+    const title = srcDoc.getTitle()
+    const author = srcDoc.getAuthor()
+    const subject = srcDoc.getSubject()
+    const keywords = srcDoc.getKeywords()
+    if (title) newDoc.setTitle(title)
+    if (author) newDoc.setAuthor(author)
+    if (subject) newDoc.setSubject(subject)
+    if (keywords) newDoc.setKeywords(keywords)
+    newDoc.setCreator('PDF Master')
+    newDoc.setProducer('PDF Master')
 
     const encryptOptions = {
       userPassword: options.userPassword || '',
@@ -364,7 +382,7 @@ ipcMain.handle('pdf:encrypt', async (event, args) => {
       },
     }
 
-    const bytes = await pdfDoc.save({ encrypt: encryptOptions })
+    const bytes = await newDoc.save({ encrypt: encryptOptions })
     return { success: true, data: Array.from(bytes) }
   } catch (error) {
     return { success: false, error: error.message }
@@ -375,11 +393,27 @@ ipcMain.handle('pdf:encrypt', async (event, args) => {
 ipcMain.handle('pdf:decrypt', async (event, args) => {
   try {
     const { fileData, password } = args
-    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData), {
+    const srcDoc = await PDFDocument.load(new Uint8Array(fileData), {
       password: password || '',
     })
 
-    const bytes = await pdfDoc.save()
+    // 同样把页面复制到新文档，去掉加密
+    const newDoc = await PDFDocument.create()
+    const pages = await newDoc.copyPages(srcDoc, srcDoc.getPageIndices())
+    pages.forEach((page) => newDoc.addPage(page))
+
+    const title = srcDoc.getTitle()
+    const author = srcDoc.getAuthor()
+    const subject = srcDoc.getSubject()
+    const keywords = srcDoc.getKeywords()
+    if (title) newDoc.setTitle(title)
+    if (author) newDoc.setAuthor(author)
+    if (subject) newDoc.setSubject(subject)
+    if (keywords) newDoc.setKeywords(keywords)
+    newDoc.setCreator('PDF Master')
+    newDoc.setProducer('PDF Master')
+
+    const bytes = await newDoc.save()
     return { success: true, data: Array.from(bytes) }
   } catch (error) {
     return { success: false, error: error.message }

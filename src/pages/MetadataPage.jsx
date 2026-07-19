@@ -83,6 +83,7 @@ function MetadataPage() {
         subject: metadata.subject,
         keywords: metadata.keywords,
         creator: metadata.creator,
+        producer: metadata.producer,
       })
       setOutputData(result)
       setStatus({ type: 'success', message: '元数据已更新，点击保存导出文件' })
@@ -222,10 +223,11 @@ function MetadataPage() {
                 <Label className="text-sm">生成工具 (Producer)</Label>
                 <Input
                   value={metadata?.producer || ''}
-                  disabled
-                  className="cursor-not-allowed bg-muted/50 text-muted-foreground"
+                  onChange={(e) => handleFieldChange('producer', e.target.value)}
+                  placeholder="生成 PDF 的工具"
+                  disabled={processing || saving}
                 />
-                <p className="text-[11px] text-muted-foreground">由 PDF 生成工具自动写入，不可编辑</p>
+                <p className="text-[11px] text-muted-foreground">默认为 PDF Master，可自定义</p>
               </div>
 
               <div className="flex flex-col gap-2">
