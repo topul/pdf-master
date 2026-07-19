@@ -2,7 +2,8 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
 const fsSync = require('fs')
-const { PDFDocument, rgb, degrees } = require('pdf-lib')
+const pdfLib = require('pdf-lib')
+const { PDFDocument, rgb, degrees } = pdfLib
 const _fontkitImport = require('@pdf-lib/fontkit')
 
 // 兼容 @pdf-lib/fontkit 的导出（CJS/ESM 互操作）
@@ -450,6 +451,114 @@ ipcMain.handle('pdf:decrypt', async (event, args) => {
     decArgs.push('--decrypt')
     const data = await runQpdfCommand(fileData, decArgs)
     return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message || String(error) }
+  }
+})
+
+// 根据压缩等级生成 qpdf 参数
+// mode: 'fast' | 'recommended' | 'strong'
+// jpegQuality: 1-100（strong 模式下有效，默认 50）
+function buildCompressArgs(mode, jpegQuality = 50) {
+  const args = ['--compress-streams=y', '--remove-unreferenced-resources=yes']
+
+  if (mode === 'fast') {
+    args.push('--object-streams=generate')
+    return args
+  }
+
+  // recommended & strong: 重新压缩 flate 流
+  args.push('--recompress-flate')
+  args.push('--compression-level=9')
+  args.push('--object-streams=generate')
+
+  if (mode === 'strong') {
+    const q = Math.max(1, Math.min(100, jpegQuality))
+    args.push(`--jpeg-quality=${q}`)
+  }
+
+  return args
+}
+
+// PDF 压缩
+ipcMain.handle('pdf:compress', async (event, args) => {
+  try {
+    const { fileData, mode = 'recommended', jpegQuality } = args
+    const compressArgs = buildCompressArgs(mode, jpegQuality)
+    const data = await runQpdfCommand(fileData, compressArgs)
+    return { success: true, data }
+  } catch (error) {
+    return { success: false, error: error.message || String(error) }
+  }
+})
+
+// 提取 PDF 中的所有图片（遍历页面对象树，找 Image XObject）
+ipcMain.handle('pdf:extractImages', async (event, args) => {
+  try {
+    const { fileData } = args
+    const uint8 = new Uint8Array(fileData)
+    const pdfDoc = await PDFDocument.load(uint8)
+    const pages = pdfDoc.getPages()
+    const images = []
+    const seenRefs = new Set()
+    const PDFName = pdfLib.PDFName
+    const PDFArray = pdfLib.PDFArray
+
+    for (const page of pages) {
+      const resources = page.node.XObject()
+      if (!resources) continue
+
+      const entries = resources.entries()
+      for (const [name, ref] of entries) {
+        const refStr = ref.toString()
+        if (seenRefs.has(refStr)) continue
+        seenRefs.add(refStr)
+
+        try {
+          const xobj = pdfDoc.context.lookup(ref)
+          if (!xobj) continue
+          const subtype = xobj.dict?.get(PDFName.of('Subtype'))
+          if (!subtype || subtype.encodedName !== 'Image') continue
+
+          const dict = xobj.dict
+          const width = dict.get(PDFName.of('Width'))?.value
+          const height = dict.get(PDFName.of('Height'))?.value
+          const filter = dict.get(PDFName.of('Filter'))
+
+          let format = 'raw'
+          const data = xobj.contents ? xobj.contents.slice() : new Uint8Array()
+
+          if (filter) {
+            let filterName
+            if (filter instanceof PDFArray) {
+              const arr = filter.array()
+              filterName = arr[arr.length - 1]?.encodedName
+            } else {
+              filterName = filter.encodedName
+            }
+            if (filterName === 'DCTDecode') {
+              format = 'jpeg'
+            } else if (filterName === 'JPXDecode') {
+              format = 'jp2'
+            } else if (filterName === 'FlateDecode') {
+              format = 'flate'
+            }
+          }
+
+          images.push({
+            name: name.value || `image_${images.length + 1}`,
+            data: Array.from(data),
+            width: width || 0,
+            height: height || 0,
+            format,
+          })
+        } catch (e) {
+          // 跳过无法解析的 XObject
+        }
+      }
+    }
+
+    return { success: true, images }
   } catch (error) {
     return { success: false, error: error.message || String(error) }
   }

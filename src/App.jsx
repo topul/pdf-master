@@ -16,6 +16,9 @@ import {
   Image as ImageIcon,
   FileCog,
   Lock,
+  FileDown,
+  FileImage,
+  Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -32,6 +35,9 @@ import ImageToPdfPage from './pages/ImageToPdfPage.jsx'
 import PdfToImagePage from './pages/PdfToImagePage.jsx'
 import MetadataPage from './pages/MetadataPage.jsx'
 import EncryptPage from './pages/EncryptPage.jsx'
+import CompressPage from './pages/CompressPage.jsx'
+import ExtractPage from './pages/ExtractPage.jsx'
+import BatchPage from './pages/BatchPage.jsx'
 
 function App() {
   const location = useLocation()
@@ -56,12 +62,20 @@ function App() {
     {
       label: '更多工具',
       items: [
+        { path: '/compress', label: 'PDF 压缩', icon: FileDown, desc: '减小文件体积' },
+        { path: '/extract', label: '提取内容', icon: FileImage, desc: '文字/图片提取' },
         { path: '/text', label: '添加文字', icon: Type, desc: '指定位置叠加' },
         { path: '/watermark', label: '添加水印', icon: Droplet, desc: '批量水印' },
         { path: '/pagenum', label: '添加页码', icon: Hash, desc: '自动页码' },
         { path: '/metadata', label: '元数据', icon: FileCog, desc: '编辑文档信息' },
         { path: '/encrypt', label: '加密/解密', icon: Lock, desc: '密码保护' },
         { path: '/print', label: '打印 PDF', icon: Printer, desc: '调用系统打印' },
+      ],
+    },
+    {
+      label: '效率工具',
+      items: [
+        { path: '/batch', label: '批量处理', icon: Layers, desc: '多文件批量操作' },
       ],
     },
   ]
@@ -181,9 +195,12 @@ function App() {
             <Route path="/text" element={<TextPage />} />
             <Route path="/watermark" element={<WatermarkPage />} />
             <Route path="/pagenum" element={<PageNumberPage />} />
+            <Route path="/compress" element={<CompressPage />} />
+            <Route path="/extract" element={<ExtractPage />} />
             <Route path="/metadata" element={<MetadataPage />} />
             <Route path="/encrypt" element={<EncryptPage />} />
             <Route path="/print" element={<PrintPage />} />
+            <Route path="/batch" element={<BatchPage />} />
           </Routes>
         </div>
       </main>

@@ -17,6 +17,9 @@ import {
   Image as ImageIcon,
   FileCog,
   Lock,
+  FileDown,
+  FileImage,
+  Layers,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -69,6 +72,20 @@ function HomePage() {
 
   const moreFeatures = [
     {
+      path: '/compress',
+      icon: FileDown,
+      title: 'PDF 压缩',
+      description: '无损或有损压缩，大幅减小文件体积',
+      accent: 'text-emerald-600 bg-emerald-500/10',
+    },
+    {
+      path: '/extract',
+      icon: FileImage,
+      title: '提取内容',
+      description: '从 PDF 中提取文字或嵌入图片',
+      accent: 'text-amber-600 bg-amber-500/10',
+    },
+    {
       path: '/text',
       icon: Type,
       title: '添加文字',
@@ -110,10 +127,17 @@ function HomePage() {
       description: '调用系统打印对话框，支持自定义打印范围',
       accent: 'text-cyan-600 bg-cyan-500/10',
     },
+    {
+      path: '/batch',
+      icon: Layers,
+      title: '批量处理',
+      description: '一次处理多个 PDF，支持批量压缩、加密、提取文字',
+      accent: 'text-violet-600 bg-violet-500/10',
+    },
   ]
 
   const stats = [
-    { value: '11+', label: 'PDF 工具' },
+    { value: '15+', label: 'PDF 工具' },
     { value: '3', label: '支持平台' },
     { value: '100%', label: '本地处理' },
     { value: '0', label: '文件上传' },

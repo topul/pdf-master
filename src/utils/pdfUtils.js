@@ -325,14 +325,14 @@ export async function addPageNumbers(fileData, options = {}) {
   return result.data
 }
 
-// 压缩 PDF（降低图片质量以减小体积）
-export async function compressPdf(fileData, options = {}) {
-  const pdfDoc = await loadPdf(fileData)
-  const bytes = await pdfDoc.save({
-    useObjectStreams: true,
-    addDefaultPage: false,
-  })
-  return Array.from(bytes)
+// 压缩 PDF（主进程 qpdf-wasm 执行）
+// mode: 'fast' | 'recommended' | 'strong'
+export async function compressPdf(fileData, mode = 'recommended', jpegQuality) {
+  const result = await window.electronAPI.pdfCompress(fileData, mode, jpegQuality)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  return result.data
 }
 
 // 将 PDF 页面提取为图片（返回 blob url 列表供预览）
@@ -370,4 +370,45 @@ export async function renderPdfToImages(fileData, scale = 1.5) {
   }
 
   return images
+}
+
+// 提取 PDF 文字内容（每页文字 + 总文字）
+export async function extractPdfText(fileData) {
+  const pdfjsLib = await import('pdfjs-dist')
+  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default
+
+  const uint8Array = new Uint8Array(fileData)
+  const loadingTask = pdfjsLib.getDocument({ data: uint8Array })
+  const pdf = await loadingTask.promise
+
+  const pages = []
+  let fullText = ''
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const textContent = await page.getTextContent()
+    const pageText = textContent.items
+      .map((item) => item.str)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    pages.push({ pageIndex: i - 1, text: pageText })
+    fullText += pageText + '\n\n'
+  }
+
+  return {
+    pageCount: pdf.numPages,
+    pages,
+    fullText: fullText.trim(),
+  }
+}
+
+// 提取 PDF 中的图片（主进程执行，遍历 XObject）
+export async function extractPdfImages(fileData) {
+  const result = await window.electronAPI.pdfExtractImages(fileData)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  return result.images
 }

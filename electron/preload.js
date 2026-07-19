@@ -14,4 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pdfAddPageNumbers: (fileData, options) => ipcRenderer.invoke('pdf:addPageNumbers', { fileData, options }),
   pdfEncrypt: (fileData, options) => ipcRenderer.invoke('pdf:encrypt', { fileData, options }),
   pdfDecrypt: (fileData, password) => ipcRenderer.invoke('pdf:decrypt', { fileData, password }),
+  pdfCompress: (fileData, mode, jpegQuality) => ipcRenderer.invoke('pdf:compress', { fileData, mode, jpegQuality }),
+  pdfExtractImages: (fileData) => ipcRenderer.invoke('pdf:extractImages', { fileData }),
 })
