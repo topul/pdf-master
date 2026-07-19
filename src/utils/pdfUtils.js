@@ -1,4 +1,19 @@
-import { PDFDocument, StandardFonts, rgb, degrees, PDFTextField, PDFCheckBox, PDFRadioGroup, PDFDropdown } from 'pdf-lib'
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  degrees,
+  PDFTextField,
+  PDFCheckBox,
+  PDFRadioGroup,
+  PDFDropdown,
+  PDFName,
+  PDFString,
+  PDFArray,
+  PDFHexString,
+  PDFNumber,
+  PDFDict,
+} from 'pdf-lib'
 
 // ===== 图片转 PDF =====
 export async function imagesToPdf(imageFiles, options = {}) {
@@ -505,59 +520,255 @@ export async function getBookmarks(fileData) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
 
-  const outline = await pdfDoc.getOutlines()
   const bookmarks = []
+  const catalog = pdfDoc.catalog
+  const outlineDict = catalog.get(PDFName.of('Outlines'))
+  if (!outlineDict) return bookmarks
 
-  if (!outline) return bookmarks
+  const lookup = pdfDoc.context.lookup.bind(pdfDoc.context)
+  const outlinesObj = lookup(outlineDict)
+  if (!outlinesObj || !outlinesObj.dict) return bookmarks
 
-  const traverse = (items, parentId = null) => {
-    items.forEach((item, idx) => {
-      bookmarks.push({
-        id: `${parentId || 'root'}-${idx}`,
-        title: item.getTitle(),
-        pageIndex: item.getPageIndex(),
-        parentId,
-      })
-      if (item.hasChildren()) {
-        traverse(item.getChildren(), `${parentId || 'root'}-${idx}`)
+  const first = outlinesObj.dict.get(PDFName.of('First'))
+  if (!first) return bookmarks
+
+  const pages = pdfDoc.getPages()
+  const pageRefs = pages.map((p) => p.ref)
+
+  const collect = (itemRef, list, parentId = null, idx = 0) => {
+    if (!itemRef) return
+    const item = lookup(itemRef)
+    if (!item || !item.dict) return
+
+    const titleObj = item.dict.get(PDFName.of('Title'))
+    let title = '未命名'
+    if (titleObj) {
+      if (titleObj instanceof PDFHexString) {
+        try {
+          title = decodeHex(titleObj.value)
+        } catch {
+          title = titleObj.value
+        }
+      } else if (titleObj instanceof PDFString) {
+        title = titleObj.value
       }
-    })
+    }
+
+    let pageIndex = -1
+    const dest = item.dict.get(PDFName.of('Dest'))
+    const a = item.dict.get(PDFName.of('A'))
+    let destArray = null
+    if (dest) {
+      if (dest instanceof PDFArray) {
+        destArray = dest
+      } else if (dest instanceof PDFString || dest instanceof PDFHexString) {
+        // named dest, skip
+      }
+    } else if (a && a instanceof PDFDict) {
+      const s = a.dict.get(PDFName.of('S'))
+      const d = a.dict.get(PDFName.of('D'))
+      if (s && s.toString() === '/GoTo' && d && d instanceof PDFArray) {
+        destArray = d
+      }
+    }
+
+    if (destArray && destArray.size() > 0) {
+      const pageRef = destArray.get(0)
+      const refIdx = pageRefs.findIndex(
+        (r) => r.objectNumber === pageRef.objectNumber && r.generationNumber === pageRef.generationNumber
+      )
+      if (refIdx >= 0) pageIndex = refIdx
+    }
+
+    const id = `${parentId || 'root'}-${idx}`
+    list.push({ id, title, pageIndex: pageIndex >= 0 ? pageIndex : 0, parentId })
+
+    const child = item.dict.get(PDFName.of('First'))
+    if (child) {
+      let childIdx = 0
+      let cur = child
+      while (cur) {
+        collect(cur, list, id, childIdx++)
+        const curItem = lookup(cur)
+        cur = curItem && curItem.dict ? curItem.dict.get(PDFName.of('Next')) : null
+      }
+    }
   }
 
-  traverse(outline)
+  let idx = 0
+  let cur = first
+  while (cur) {
+    collect(cur, bookmarks, null, idx++)
+    const curItem = lookup(cur)
+    cur = curItem && curItem.dict ? curItem.dict.get(PDFName.of('Next')) : null
+  }
+
   return bookmarks
 }
 
-// 添加书签
+// 添加书签（通过低层字典操作）
 export async function addBookmark(fileData, bookmark) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
 
-  let outline = await pdfDoc.getOutlines()
-  if (!outline) {
-    outline = pdfDoc.catalog
+  const context = pdfDoc.context
+  const catalog = pdfDoc.catalog
+
+  // 获取或创建 Outlines 字典
+  let outlinesRef = catalog.get(PDFName.of('Outlines'))
+  let outlines
+  if (outlinesRef) {
+    outlines = context.lookup(outlinesRef)
   }
+  if (!outlines) {
+    outlines = context.obj({})
+    outlinesRef = context.register(outlines)
+    catalog.set(PDFName.of('Outlines'), outlinesRef)
+  }
+
+  // 获取或创建 First/Last 链
   const page = pdfDoc.getPage(bookmark.pageIndex)
-  outline.addItem(bookmark.title, page)
+  const destArray = context.obj([page.ref, PDFName.of('Fit')])
+
+  // 创建新的 outline item
+  const newItem = context.obj({
+    Title: PDFHexString.of(Buffer.from(bookmark.title, 'utf-8').toString('hex')),
+    Parent: outlinesRef,
+    Dest: destArray,
+  })
+  const newItemRef = context.register(newItem)
+
+  const first = outlines.dict.get(PDFName.of('First'))
+  if (!first) {
+    // 第一个书签
+    outlines.dict.set(PDFName.of('First'), newItemRef)
+    outlines.dict.set(PDFName.of('Last'), newItemRef)
+    outlines.dict.set(PDFName.of('Count'), PDFNumber.of(1))
+  } else {
+    // 插入到末尾
+    let lastRef = outlines.dict.get(PDFName.of('Last'))
+    const lastItem = context.lookup(lastRef)
+    if (lastItem && lastItem.dict) {
+      lastItem.dict.set(PDFName.of('Next'), newItemRef)
+      newItem.dict.set(PDFName.of('Prev'), lastRef)
+    }
+    outlines.dict.set(PDFName.of('Last'), newItemRef)
+    const count = outlines.dict.get(PDFName.of('Count'))
+    outlines.dict.set(PDFName.of('Count'), PDFNumber.of((count ? count.value : 0) + 1))
+  }
 
   const pdfBytes = await pdfDoc.save()
   return Array.from(pdfBytes)
 }
 
-// 更新书签
+// 更新书签标题
 export async function updateBookmark(fileData, bookmarkId, updates) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
 
-  const outline = await pdfDoc.getOutlines()
-  if (!outline) return Array.from(await pdfDoc.save())
+  const catalog = pdfDoc.catalog
+  const outlinesRef = catalog.get(PDFName.of('Outlines'))
+  if (!outlinesRef) return Array.from(await pdfDoc.save())
+
+  const outlines = pdfDoc.context.lookup(outlinesRef)
+  if (!outlines || !outlines.dict) return Array.from(await pdfDoc.save())
+
+  const first = outlines.dict.get(PDFName.of('First'))
+  if (!first) return Array.from(await pdfDoc.save())
 
   const idx = parseInt(bookmarkId.split('-').pop(), 10)
-  if (!isNaN(idx)) {
-    const item = outline.getItem(idx)
-    if (item && updates.title) {
-      item.setTitle(updates.title)
+  if (isNaN(idx)) return Array.from(await pdfDoc.save())
+
+  // 遍历到第 idx 个
+  let cur = first
+  for (let i = 0; i < idx; i++) {
+    const item = pdfDoc.context.lookup(cur)
+    if (!item || !item.dict) break
+    cur = item.dict.get(PDFName.of('Next'))
+    if (!cur) break
+  }
+
+  if (cur) {
+    const item = pdfDoc.context.lookup(cur)
+    if (item && item.dict && updates.title) {
+      item.dict.set(PDFName.of('Title'), PDFHexString.of(Buffer.from(updates.title, 'utf-8').toString('hex')))
     }
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  return Array.from(pdfBytes)
+}
+
+// 删除书签
+export async function removeBookmark(fileData, bookmarkId) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const catalog = pdfDoc.catalog
+  const outlinesRef = catalog.get(PDFName.of('Outlines'))
+  if (!outlinesRef) return Array.from(await pdfDoc.save())
+
+  const outlines = pdfDoc.context.lookup(outlinesRef)
+  if (!outlines || !outlines.dict) return Array.from(await pdfDoc.save())
+
+  const first = outlines.dict.get(PDFName.of('First'))
+  if (!first) return Array.from(await pdfDoc.save())
+
+  const idx = parseInt(bookmarkId.split('-').pop(), 10)
+  if (isNaN(idx)) return Array.from(await pdfDoc.save())
+
+  // 遍历到第 idx 个
+  let cur = first
+  let prev = null
+  for (let i = 0; i < idx; i++) {
+    const item = pdfDoc.context.lookup(cur)
+    if (!item || !item.dict) break
+    prev = cur
+    cur = item.dict.get(PDFName.of('Next'))
+    if (!cur) break
+  }
+
+  if (!cur) return Array.from(await pdfDoc.save())
+
+  const item = pdfDoc.context.lookup(cur)
+  if (!item || !item.dict) return Array.from(await pdfDoc.save())
+
+  const next = item.dict.get(PDFName.of('Next'))
+
+  if (prev) {
+    const prevItem = pdfDoc.context.lookup(prev)
+    if (prevItem && prevItem.dict) {
+      if (next) {
+        prevItem.dict.set(PDFName.of('Next'), next)
+        const nextItem = pdfDoc.context.lookup(next)
+        if (nextItem && nextItem.dict) {
+          nextItem.dict.set(PDFName.of('Prev'), prev)
+        }
+      } else {
+        prevItem.dict.delete(PDFName.of('Next'))
+        outlines.dict.set(PDFName.of('Last'), prev)
+      }
+    }
+  } else {
+    // 删除第一个
+    if (next) {
+      outlines.dict.set(PDFName.of('First'), next)
+      const nextItem = pdfDoc.context.lookup(next)
+      if (nextItem && nextItem.dict) {
+        nextItem.dict.delete(PDFName.of('Prev'))
+      }
+    } else {
+      outlines.dict.delete(PDFName.of('First'))
+      outlines.dict.delete(PDFName.of('Last'))
+      outlines.dict.delete(PDFName.of('Count'))
+    }
+  }
+
+  // 更新计数
+  const count = outlines.dict.get(PDFName.of('Count'))
+  if (count) {
+    const newCount = Math.max(0, count.value - 1)
+    outlines.dict.set(PDFName.of('Count'), PDFNumber.of(newCount))
   }
 
   const pdfBytes = await pdfDoc.save()
@@ -588,21 +799,21 @@ export async function cropPdf(fileData, margins) {
   return Array.from(pdfBytes)
 }
 
-// 删除书签
-export async function removeBookmark(fileData, bookmarkId) {
-  const uint8Array = new Uint8Array(fileData)
-  const pdfDoc = await PDFDocument.load(uint8Array)
-
-  const outline = await pdfDoc.getOutlines()
-  if (!outline) return Array.from(await pdfDoc.save())
-
-  const idx = parseInt(bookmarkId.split('-').pop(), 10)
-  if (!isNaN(idx)) {
-    outline.removeItem(idx)
+// 辅助：解码 PDF Hex 字符串
+function decodeHex(hex) {
+  if (!hex) return ''
+  let str = ''
+  for (let i = 0; i < hex.length; i += 2) {
+    str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
   }
-
-  const pdfBytes = await pdfDoc.save()
-  return Array.from(pdfBytes)
+  // 尝试 UTF-16BE 解码（PDF 标准）
+  try {
+    const bytes = new Uint8Array(str.length)
+    for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i)
+    return new TextDecoder('utf-16be').decode(bytes)
+  } catch {
+    return str
+  }
 }
 
 // 签名 PDF（将手写签名图片插入指定位置）
