@@ -142,7 +142,7 @@ function MetadataPage() {
 
       {!file ? (
         <EmptyState
-          icon={FileInfo}
+          icon={FileCog}
           title="还没有选择 PDF"
           description="选择一个 PDF 文件，查看并编辑它的元数据信息"
           actionLabel="选择 PDF 文件"
