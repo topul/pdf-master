@@ -39,6 +39,7 @@ function ExtractPage() {
 
   const [images, setImages] = useState([])
   const [imagePreviews, setImagePreviews] = useState([])
+  const [imagesExtracted, setImagesExtracted] = useState(false)
 
   const textScrollRef = useRef(null)
 
@@ -62,6 +63,7 @@ function ExtractPage() {
       setTextResult(null)
       setImages([])
       setImagePreviews([])
+      setImagesExtracted(false)
       setStatus(null)
     }
   }
@@ -82,6 +84,7 @@ function ExtractPage() {
       } else {
         const imgs = await extractPdfImages(file.data)
         setImages(imgs)
+        setImagesExtracted(true)
 
         // 生成预览 URL（jpeg 直接用，其他格式尝试 Blob）
         const previews = imgs.map((img) => {
@@ -158,6 +161,7 @@ function ExtractPage() {
     setTextResult(null)
     setImages([])
     setImagePreviews([])
+    setImagesExtracted(false)
     setStatus(null)
   }
 
@@ -285,11 +289,13 @@ function ExtractPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="images" className="mt-3 flex flex-1 flex-col overflow-hidden">
+            <TabsContent value="images" className="mt-3 flex flex-col">
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
                   {hasImages
                     ? `找到 ${images.length} 张图片`
+                    : imagesExtracted
+                    ? '未找到嵌入图片'
                     : '提取后图片将显示在这里'}
                 </div>
                 <Button
@@ -303,8 +309,8 @@ function ExtractPage() {
                 </Button>
               </div>
 
-              <Card className="flex flex-1 overflow-hidden">
-                <ScrollArea className="h-full w-full p-4">
+              <Card className="flex flex-col overflow-hidden">
+                <div className="p-4">
                   {hasImages ? (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                       {images.map((img, idx) => {
@@ -348,12 +354,19 @@ function ExtractPage() {
                         )
                       })}
                     </div>
+                  ) : imagesExtracted ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground">
+                      <ImageIcon className="mb-2 h-12 w-12 opacity-30" />
+                      <span>未在 PDF 中找到嵌入图片</span>
+                      <span className="mt-1 text-xs">该 PDF 可能是纯文本或扫描件</span>
+                    </div>
                   ) : (
-                    <div className="flex h-full items-center justify-center py-20 text-sm text-muted-foreground">
-                      点击「开始提取」获取 PDF 中的图片
+                    <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground">
+                      <ImageIcon className="mb-2 h-12 w-12 opacity-30" />
+                      <span>点击「开始提取」获取 PDF 中的图片</span>
                     </div>
                   )}
-                </ScrollArea>
+                </div>
               </Card>
             </TabsContent>
           </Tabs>
