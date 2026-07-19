@@ -41,16 +41,10 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
 
-      - name: 设置 Python (Windows)
-        if: matrix.platform == 'win'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: 安装 Linux 打包依赖 + 升级 GCC 到 13（muhammara 6.x 需要 C++20）
+      - name: 安装 Linux 打包依赖
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
@@ -58,16 +52,15 @@ jobs:
             libcups2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
             libxrandr2 libgbm1 libpangocairo-1.0-0 \
             libgdk-pixbuf2.0-0 libgtk-3-0 \
-            build-essential python3 make g++-13 gcc-13 \
             || sudo apt-get install -y libasound2 || true
-          # 让 muhammara native 编译用 gcc-13（需要 C++20）
-          echo "CC=gcc-13" >> $GITHUB_ENV
-          echo "CXX=g++-13" >> $GITHUB_ENV
 
       - name: 安装依赖
         env:
-          npm_config_runtime_version: 31
-          npm_config_build_from_source: true
+          # 让 node-pre-gyp 下载 electron 31 的预编译 muhammara 二进制，免去本地编译
+          npm_config_runtime: electron
+          npm_config_target: 31.3.1
+          npm_config_target_arch: x64
+          npm_config_disturl: https://electronjs.org/headers
         run: npm install --no-audit --no-fund --foreground-scripts
 
       - name: 诊断 muhammara binding
@@ -78,9 +71,6 @@ jobs:
           echo ""
           echo "=== electron 版本 ==="
           npx electron --version || true
-          echo ""
-          echo "=== 简单加载测试（用 electron） ==="
-          npx electron --no-sandbox --version || true
 
       - name: 构建前端 + 打包 Electron 应用
         env:
@@ -142,4 +132,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
