@@ -505,8 +505,10 @@ export async function getBookmarks(fileData) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
 
-  const outline = pdfDoc.getOutline()
+  const outline = await pdfDoc.getOutlines()
   const bookmarks = []
+
+  if (!outline) return bookmarks
 
   const traverse = (items, parentId = null) => {
     items.forEach((item, idx) => {
@@ -531,7 +533,10 @@ export async function addBookmark(fileData, bookmark) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
 
-  const outline = pdfDoc.getOutline()
+  let outline = await pdfDoc.getOutlines()
+  if (!outline) {
+    outline = pdfDoc.catalog
+  }
   const page = pdfDoc.getPage(bookmark.pageIndex)
   outline.addItem(bookmark.title, page)
 
@@ -544,7 +549,9 @@ export async function updateBookmark(fileData, bookmarkId, updates) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
 
-  const outline = pdfDoc.getOutline()
+  const outline = await pdfDoc.getOutlines()
+  if (!outline) return Array.from(await pdfDoc.save())
+
   const idx = parseInt(bookmarkId.split('-').pop(), 10)
   if (!isNaN(idx)) {
     const item = outline.getItem(idx)
@@ -586,7 +593,9 @@ export async function removeBookmark(fileData, bookmarkId) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)
 
-  const outline = pdfDoc.getOutline()
+  const outline = await pdfDoc.getOutlines()
+  if (!outline) return Array.from(await pdfDoc.save())
+
   const idx = parseInt(bookmarkId.split('-').pop(), 10)
   if (!isNaN(idx)) {
     outline.removeItem(idx)
