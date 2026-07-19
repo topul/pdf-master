@@ -343,3 +343,45 @@ ipcMain.handle('pdf:addPageNumbers', async (event, args) => {
     return { success: false, error: error.message }
   }
 })
+
+// PDF 加密
+ipcMain.handle('pdf:encrypt', async (event, args) => {
+  try {
+    const { fileData, options } = args
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData))
+
+    const encryptOptions = {
+      userPassword: options.userPassword || '',
+      ownerPassword: options.ownerPassword || options.userPassword || '',
+      permissions: {
+        printing: options.allowPrint !== false ? 'highResolution' : 'none',
+        modifying: options.allowModify !== false,
+        copying: options.allowCopy !== false,
+        annotating: options.allowAnnotate !== false,
+        fillingForms: options.allowFillForms !== false,
+        contentAccessibility: options.allowAccessibility !== false,
+        documentAssembly: options.allowAssembly !== false,
+      },
+    }
+
+    const bytes = await pdfDoc.save({ encrypt: encryptOptions })
+    return { success: true, data: Array.from(bytes) }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+// PDF 解密
+ipcMain.handle('pdf:decrypt', async (event, args) => {
+  try {
+    const { fileData, password } = args
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData), {
+      password: password || '',
+    })
+
+    const bytes = await pdfDoc.save()
+    return { success: true, data: Array.from(bytes) }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})

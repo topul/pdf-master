@@ -1,5 +1,144 @@
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
 
+// ===== 图片转 PDF =====
+export async function imagesToPdf(imageFiles, options = {}) {
+  const pdfDoc = await PDFDocument.create()
+  const pageSize = options.pageSize || 'a4'
+  const margin = options.margin ?? 20
+  const fit = options.fit ?? true
+
+  const a4Width = 595.28
+  const a4Height = 841.89
+
+  for (let i = 0; i < imageFiles.length; i++) {
+    const imgFile = imageFiles[i]
+    const uint8 = new Uint8Array(imgFile.data)
+
+    let image
+    const ext = (imgFile.name.split('.').pop() || '').toLowerCase()
+
+    if (ext === 'png') {
+      image = await pdfDoc.embedPng(uint8)
+    } else if (ext === 'jpg' || ext === 'jpeg') {
+      image = await pdfDoc.embedJpg(uint8)
+    } else {
+      const bitmap = await loadImageBitmap(uint8)
+      const pngData = await bitmapToPng(bitmap)
+      image = await pdfDoc.embedPng(pngData)
+    }
+
+    const { width: imgWidth, height: imgHeight } = image.scale(1)
+
+    let pageWidth, pageHeight
+    if (pageSize === 'a4') {
+      pageWidth = a4Width
+      pageHeight = a4Height
+    } else if (pageSize === 'fit') {
+      pageWidth = imgWidth + margin * 2
+      pageHeight = imgHeight + margin * 2
+    } else {
+      pageWidth = a4Width
+      pageHeight = a4Height
+    }
+
+    const page = pdfDoc.addPage([pageWidth, pageHeight])
+
+    let drawWidth = imgWidth
+    let drawHeight = imgHeight
+
+    if (fit && pageSize !== 'fit') {
+      const maxWidth = pageWidth - margin * 2
+      const maxHeight = pageHeight - margin * 2
+      const scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight, 1)
+      drawWidth = imgWidth * scale
+      drawHeight = imgHeight * scale
+    }
+
+    const x = (pageWidth - drawWidth) / 2
+    const y = (pageHeight - drawHeight) / 2
+
+    page.drawImage(image, {
+      x,
+      y,
+      width: drawWidth,
+      height: drawHeight,
+    })
+  }
+
+  const bytes = await pdfDoc.save()
+  return Array.from(bytes)
+}
+
+async function loadImageBitmap(uint8Array) {
+  const blob = new Blob([uint8Array])
+  const bitmap = await createImageBitmap(blob)
+  return bitmap
+}
+
+async function bitmapToPng(bitmap) {
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(bitmap, 0, 0)
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(new Uint8Array(reader.result))
+      reader.readAsArrayBuffer(blob)
+    }, 'image/png')
+  })
+}
+
+// ===== 读取 PDF 元数据 =====
+export async function getPdfMetadata(fileData) {
+  const pdfDoc = await loadPdf(fileData)
+  return {
+    title: pdfDoc.getTitle() || '',
+    author: pdfDoc.getAuthor() || '',
+    subject: pdfDoc.getSubject() || '',
+    keywords: pdfDoc.getKeywords() || '',
+    creator: pdfDoc.getCreator() || '',
+    producer: pdfDoc.getProducer() || '',
+    creationDate: pdfDoc.getCreationDate() || null,
+    modificationDate: pdfDoc.getModificationDate() || null,
+    pageCount: pdfDoc.getPageCount(),
+    isEncrypted: false,
+  }
+}
+
+// ===== 设置 PDF 元数据 =====
+export async function setPdfMetadata(fileData, metadata) {
+  const pdfDoc = await loadPdf(fileData)
+
+  if (metadata.title !== undefined) pdfDoc.setTitle(metadata.title)
+  if (metadata.author !== undefined) pdfDoc.setAuthor(metadata.author)
+  if (metadata.subject !== undefined) pdfDoc.setSubject(metadata.subject)
+  if (metadata.keywords !== undefined) pdfDoc.setKeywords(metadata.keywords)
+  if (metadata.creator !== undefined) pdfDoc.setCreator(metadata.creator)
+
+  const bytes = await pdfDoc.save()
+  return Array.from(bytes)
+}
+
+// ===== PDF 加密（主进程执行）=====
+export async function encryptPdf(fileData, options) {
+  const result = await window.electronAPI.pdfEncrypt(fileData, options)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  return result.data
+}
+
+// ===== PDF 解密（主进程执行）=====
+export async function decryptPdf(fileData, password) {
+  const result = await window.electronAPI.pdfDecrypt(fileData, password)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  return result.data
+}
+
 export async function loadPdf(fileData) {
   const uint8Array = new Uint8Array(fileData)
   const pdfDoc = await PDFDocument.load(uint8Array)

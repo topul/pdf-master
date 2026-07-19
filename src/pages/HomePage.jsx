@@ -13,6 +13,10 @@ import {
   Cpu,
   WifiOff,
   Sparkles,
+  ImagePlus,
+  Image as ImageIcon,
+  FileCog,
+  Lock,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -46,6 +50,23 @@ function HomePage() {
     },
   ]
 
+  const convertFeatures = [
+    {
+      path: '/image-to-pdf',
+      icon: ImagePlus,
+      title: '图片转 PDF',
+      description: '多张图片按顺序合并为 PDF，支持 A4 或适应图片',
+      accent: 'text-emerald-600 bg-emerald-500/10',
+    },
+    {
+      path: '/pdf-to-image',
+      icon: ImageIcon,
+      title: 'PDF 转图片',
+      description: '每一页导出为高清 PNG 或 JPG 图片，批量导出',
+      accent: 'text-orange-600 bg-orange-500/10',
+    },
+  ]
+
   const moreFeatures = [
     {
       path: '/text',
@@ -69,6 +90,20 @@ function HomePage() {
       accent: 'text-violet-600 bg-violet-500/10',
     },
     {
+      path: '/metadata',
+      icon: FileCog,
+      title: '元数据',
+      description: '查看和编辑标题、作者、关键词等文档信息',
+      accent: 'text-sky-600 bg-sky-500/10',
+    },
+    {
+      path: '/encrypt',
+      icon: Lock,
+      title: '加密 / 解密',
+      description: '添加密码保护，或移除已有密码与权限限制',
+      accent: 'text-red-600 bg-red-500/10',
+    },
+    {
       path: '/print',
       icon: Printer,
       title: '打印 PDF',
@@ -78,7 +113,7 @@ function HomePage() {
   ]
 
   const stats = [
-    { value: '7+', label: 'PDF 工具' },
+    { value: '11+', label: 'PDF 工具' },
     { value: '3', label: '支持平台' },
     { value: '100%', label: '本地处理' },
     { value: '0', label: '文件上传' },
@@ -158,6 +193,44 @@ function HomePage() {
                       开始使用
                       <ArrowRight className="h-4 w-4" />
                     </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* 格式转换 */}
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">格式转换</h2>
+            <p className="text-sm text-muted-foreground">图片与 PDF 互转，批量导出</p>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {convertFeatures.map((feature) => {
+            const Icon = feature.icon
+            return (
+              <Link key={feature.path} to={feature.path} className="group">
+                <Card className="relative h-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <CardContent className="flex h-full items-center gap-4 p-5">
+                    <div
+                      className={cn(
+                        'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+                        feature.accent
+                      )}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-semibold">{feature.title}</h3>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {feature.description}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                   </CardContent>
                 </Card>
               </Link>

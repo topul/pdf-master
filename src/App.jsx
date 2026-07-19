@@ -12,6 +12,10 @@ import {
   PanelLeftClose,
   PanelLeft,
   FileText,
+  ImagePlus,
+  Image as ImageIcon,
+  FileCog,
+  Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -24,6 +28,10 @@ import TextPage from './pages/TextPage.jsx'
 import WatermarkPage from './pages/WatermarkPage.jsx'
 import PrintPage from './pages/PrintPage.jsx'
 import PageNumberPage from './pages/PageNumberPage.jsx'
+import ImageToPdfPage from './pages/ImageToPdfPage.jsx'
+import PdfToImagePage from './pages/PdfToImagePage.jsx'
+import MetadataPage from './pages/MetadataPage.jsx'
+import EncryptPage from './pages/EncryptPage.jsx'
 
 function App() {
   const location = useLocation()
@@ -39,11 +47,20 @@ function App() {
       ],
     },
     {
+      label: '格式转换',
+      items: [
+        { path: '/image-to-pdf', label: '图片转 PDF', icon: ImagePlus, desc: '多图合并' },
+        { path: '/pdf-to-image', label: 'PDF 转图片', icon: ImageIcon, desc: '逐页导出' },
+      ],
+    },
+    {
       label: '更多工具',
       items: [
         { path: '/text', label: '添加文字', icon: Type, desc: '指定位置叠加' },
         { path: '/watermark', label: '添加水印', icon: Droplet, desc: '批量水印' },
         { path: '/pagenum', label: '添加页码', icon: Hash, desc: '自动页码' },
+        { path: '/metadata', label: '元数据', icon: FileCog, desc: '编辑文档信息' },
+        { path: '/encrypt', label: '加密/解密', icon: Lock, desc: '密码保护' },
         { path: '/print', label: '打印 PDF', icon: Printer, desc: '调用系统打印' },
       ],
     },
@@ -159,9 +176,13 @@ function App() {
             <Route path="/merge" element={<MergePage />} />
             <Route path="/split" element={<SplitPage />} />
             <Route path="/edit" element={<EditPage />} />
+            <Route path="/image-to-pdf" element={<ImageToPdfPage />} />
+            <Route path="/pdf-to-image" element={<PdfToImagePage />} />
             <Route path="/text" element={<TextPage />} />
             <Route path="/watermark" element={<WatermarkPage />} />
             <Route path="/pagenum" element={<PageNumberPage />} />
+            <Route path="/metadata" element={<MetadataPage />} />
+            <Route path="/encrypt" element={<EncryptPage />} />
             <Route path="/print" element={<PrintPage />} />
           </Routes>
         </div>
