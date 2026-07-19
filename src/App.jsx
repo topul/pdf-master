@@ -19,6 +19,9 @@ import {
   FileDown,
   FileImage,
   Layers,
+  PenTool,
+  FileEdit,
+  Bookmark,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -38,6 +41,10 @@ import EncryptPage from './pages/EncryptPage.jsx'
 import CompressPage from './pages/CompressPage.jsx'
 import ExtractPage from './pages/ExtractPage.jsx'
 import BatchPage from './pages/BatchPage.jsx'
+import SignaturePage from './pages/SignaturePage.jsx'
+import FormPage from './pages/FormPage.jsx'
+import BookmarkPage from './pages/BookmarkPage.jsx'
+import CropPage from './pages/CropPage.jsx'
 
 function App() {
   const location = useLocation()
@@ -76,6 +83,10 @@ function App() {
       label: '效率工具',
       items: [
         { path: '/batch', label: '批量处理', icon: Layers, desc: '多文件批量操作' },
+        { path: '/signature', label: 'PDF 签名', icon: PenTool, desc: '手写签名' },
+        { path: '/form', label: '填写表单', icon: FileEdit, desc: '表单域填写' },
+        { path: '/bookmark', label: '书签管理', icon: Bookmark, desc: '目录书签' },
+        { path: '/crop', label: '页面裁剪', icon: Scissors, desc: '调整边距' },
       ],
     },
   ]
@@ -201,6 +212,10 @@ function App() {
             <Route path="/encrypt" element={<EncryptPage />} />
             <Route path="/print" element={<PrintPage />} />
             <Route path="/batch" element={<BatchPage />} />
+            <Route path="/signature" element={<SignaturePage />} />
+            <Route path="/form" element={<FormPage />} />
+            <Route path="/bookmark" element={<BookmarkPage />} />
+            <Route path="/crop" element={<CropPage />} />
           </Routes>
         </div>
       </main>

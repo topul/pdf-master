@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb, degrees, PDFTextField, PDFCheckBox, PDFRadioGroup, PDFDropdown } from 'pdf-lib'
 
 // ===== 图片转 PDF =====
 export async function imagesToPdf(imageFiles, options = {}) {
@@ -411,4 +411,219 @@ export async function extractPdfImages(fileData) {
     throw new Error(result.error)
   }
   return result.images
+}
+
+// 获取 PDF 表单域信息
+export async function getFormFields(fileData) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const form = pdfDoc.getForm()
+  const fields = []
+
+  const fieldNames = form.getFields().map((f) => f.getName())
+  for (const name of fieldNames) {
+    const field = form.getField(name)
+    if (!field) continue
+
+    let type = 'TextField'
+    let value = ''
+    let options = []
+
+    try {
+      if (field instanceof PDFTextField) {
+        type = 'TextField'
+        value = field.getText() || ''
+      } else if (field instanceof PDFCheckBox) {
+        type = 'CheckBox'
+        value = field.isChecked() ? 'Yes' : 'Off'
+      } else if (field instanceof PDFRadioGroup) {
+        type = 'Radio'
+        value = field.getSelected() || ''
+        options = field.getOptions().map((o) => o.getValue())
+      } else if (field instanceof PDFDropdown) {
+        type = 'Dropdown'
+        value = field.getSelected() || ''
+        options = field.getOptions().map((o) => o.getValue())
+      } else {
+        const fieldType = field.constructor.name
+        if (fieldType.includes('Signature')) {
+          type = 'Signature'
+        }
+      }
+    } catch (e) {
+      type = 'TextField'
+      try {
+        value = field.getText?.() || ''
+      } catch {}
+    }
+
+    fields.push({
+      name,
+      type,
+      value,
+      options,
+      label: name,
+    })
+  }
+
+  return fields
+}
+
+// 填写 PDF 表单
+export async function fillForm(fileData, values) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const form = pdfDoc.getForm()
+
+  for (const [name, value] of Object.entries(values)) {
+    try {
+      const field = form.getField(name)
+      if (!field) continue
+
+      if (field instanceof PDFTextField) {
+        field.setText(value)
+      } else if (field instanceof PDFCheckBox) {
+        field.check(value === 'Yes' || value === true || value === 'true')
+      } else if (field instanceof PDFRadioGroup) {
+        field.select(value)
+      } else if (field instanceof PDFDropdown) {
+        field.select(value)
+      }
+    } catch (e) {
+      console.warn(`Failed to fill field ${name}:`, e)
+    }
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  return Array.from(pdfBytes)
+}
+
+// 获取 PDF 书签
+export async function getBookmarks(fileData) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const outline = pdfDoc.getOutline()
+  const bookmarks = []
+
+  const traverse = (items, parentId = null) => {
+    items.forEach((item, idx) => {
+      bookmarks.push({
+        id: `${parentId || 'root'}-${idx}`,
+        title: item.getTitle(),
+        pageIndex: item.getPageIndex(),
+        parentId,
+      })
+      if (item.hasChildren()) {
+        traverse(item.getChildren(), `${parentId || 'root'}-${idx}`)
+      }
+    })
+  }
+
+  traverse(outline)
+  return bookmarks
+}
+
+// 添加书签
+export async function addBookmark(fileData, bookmark) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const outline = pdfDoc.getOutline()
+  const page = pdfDoc.getPage(bookmark.pageIndex)
+  outline.addItem(bookmark.title, page)
+
+  const pdfBytes = await pdfDoc.save()
+  return Array.from(pdfBytes)
+}
+
+// 更新书签
+export async function updateBookmark(fileData, bookmarkId, updates) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const outline = pdfDoc.getOutline()
+  const idx = parseInt(bookmarkId.split('-').pop(), 10)
+  if (!isNaN(idx)) {
+    const item = outline.getItem(idx)
+    if (item && updates.title) {
+      item.setTitle(updates.title)
+    }
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  return Array.from(pdfBytes)
+}
+
+// 裁剪 PDF 页面
+export async function cropPdf(fileData, margins) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const pages = pdfDoc.getPages()
+  for (const page of pages) {
+    const { width, height } = page.getSize()
+
+    const newWidth = width - margins.left - margins.right
+    const newHeight = height - margins.top - margins.bottom
+
+    if (newWidth <= 0 || newHeight <= 0) {
+      throw new Error('裁剪边距过大，页面尺寸不能为零')
+    }
+
+    page.setSize(newWidth, newHeight)
+    page.translateContent(-margins.left, margins.bottom)
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  return Array.from(pdfBytes)
+}
+
+// 删除书签
+export async function removeBookmark(fileData, bookmarkId) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  const outline = pdfDoc.getOutline()
+  const idx = parseInt(bookmarkId.split('-').pop(), 10)
+  if (!isNaN(idx)) {
+    outline.removeItem(idx)
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  return Array.from(pdfBytes)
+}
+
+// 签名 PDF（将手写签名图片插入指定位置）
+export async function signPdf(fileData, signatures) {
+  const uint8Array = new Uint8Array(fileData)
+  const pdfDoc = await PDFDocument.load(uint8Array)
+
+  for (const sig of signatures) {
+    const base64Data = sig.dataUrl.split(',')[1]
+    const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0))
+
+    let image
+    try {
+      image = await pdfDoc.embedPng(imageBytes)
+    } catch {
+      image = await pdfDoc.embedJpg(imageBytes)
+    }
+
+    const page = pdfDoc.getPage(sig.pageIndex)
+    const { width: pageWidth, height: pageHeight } = page.getSize()
+
+    const scale = (40 / image.height) * image.width
+    page.drawImage(image, {
+      x: sig.x,
+      y: pageHeight - sig.y,
+      width: scale,
+      height: 40,
+    })
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  return Array.from(pdfBytes)
 }

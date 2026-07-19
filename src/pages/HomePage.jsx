@@ -20,6 +20,9 @@ import {
   FileDown,
   FileImage,
   Layers,
+  PenTool,
+  FileEdit,
+  Bookmark,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -134,10 +137,38 @@ function HomePage() {
       description: '一次处理多个 PDF，支持批量压缩、加密、提取文字',
       accent: 'text-violet-600 bg-violet-500/10',
     },
+    {
+      path: '/signature',
+      icon: PenTool,
+      title: 'PDF 签名',
+      description: '手写签名并添加到 PDF 指定位置，支持调整颜色和粗细',
+      accent: 'text-orange-600 bg-orange-500/10',
+    },
+    {
+      path: '/form',
+      icon: FileEdit,
+      title: '填写表单',
+      description: '填写 PDF 表单域，支持文本框、复选框、单选框等',
+      accent: 'text-pink-600 bg-pink-500/10',
+    },
+    {
+      path: '/bookmark',
+      icon: Bookmark,
+      title: '书签管理',
+      description: '查看、添加、编辑和删除 PDF 书签/目录',
+      accent: 'text-indigo-600 bg-indigo-500/10',
+    },
+    {
+      path: '/crop',
+      icon: Scissors,
+      title: '页面裁剪',
+      description: '调整 PDF 页面边距，裁剪空白区域',
+      accent: 'text-teal-600 bg-teal-500/10',
+    },
   ]
 
   const stats = [
-    { value: '15+', label: 'PDF 工具' },
+    { value: '19+', label: 'PDF 工具' },
     { value: '3', label: '支持平台' },
     { value: '100%', label: '本地处理' },
     { value: '0', label: '文件上传' },
