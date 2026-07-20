@@ -26,31 +26,34 @@ import {
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { useTranslations } from '@/hooks/useLocale.js'
 import { cn } from '@/lib/utils'
 
 function HomePage() {
+  const t = useTranslations()
+
   const mainFeatures = [
     {
       path: '/merge',
       icon: FilePlus2,
-      title: '合并 PDF',
-      description: '将多个 PDF 按顺序合并为一个文档，支持任意顺序调整',
+      title: t.common.merge,
+      description: t.home.feature1,
       accent: 'from-blue-500 to-indigo-600',
       tag: '常用',
     },
     {
       path: '/split',
       icon: Scissors,
-      title: '拆分 PDF',
-      description: '按页数、范围或单页拆分 PDF，灵活提取所需内容',
+      title: t.common.split,
+      description: t.home.feature2,
       accent: 'from-rose-500 to-pink-600',
       tag: '常用',
     },
     {
       path: '/edit',
       icon: PencilLine,
-      title: '编辑 PDF',
-      description: '旋转、删除、提取、重排页面，所有操作实时预览',
+      title: t.common.edit,
+      description: t.home.feature3,
       accent: 'from-amber-500 to-orange-600',
       tag: '可视化',
     },
@@ -60,15 +63,15 @@ function HomePage() {
     {
       path: '/image-to-pdf',
       icon: ImagePlus,
-      title: '图片转 PDF',
-      description: '多张图片按顺序合并为 PDF，支持 A4 或适应图片',
+      title: t.common.imageToPdf,
+      description: t.home.feature4,
       accent: 'text-emerald-600 bg-emerald-500/10',
     },
     {
       path: '/pdf-to-image',
       icon: ImageIcon,
-      title: 'PDF 转图片',
-      description: '每一页导出为高清 PNG 或 JPG 图片，批量导出',
+      title: t.common.pdfToImage,
+      description: t.home.feature4,
       accent: 'text-orange-600 bg-orange-500/10',
     },
   ]
@@ -77,106 +80,105 @@ function HomePage() {
     {
       path: '/compress',
       icon: FileDown,
-      title: 'PDF 压缩',
-      description: '无损或有损压缩，大幅减小文件体积',
+      title: t.common.compress,
+      description: t.nav.compressDesc,
       accent: 'text-emerald-600 bg-emerald-500/10',
     },
     {
       path: '/extract',
       icon: FileImage,
-      title: '提取内容',
-      description: '从 PDF 中提取文字或嵌入图片',
+      title: t.common.extract,
+      description: t.nav.extractDesc,
       accent: 'text-amber-600 bg-amber-500/10',
     },
     {
       path: '/text',
       icon: Type,
-      title: '添加文字',
-      description: '点击预览图选择位置，叠加自定义文字',
+      title: t.common.text,
+      description: t.nav.textDesc,
       accent: 'text-emerald-600 bg-emerald-500/10',
     },
     {
       path: '/watermark',
       icon: Droplet,
-      title: '添加水印',
-      description: '批量给所有页面添加自定义文字水印',
+      title: t.common.watermark,
+      description: t.nav.watermarkDesc,
       accent: 'text-pink-600 bg-pink-500/10',
     },
     {
       path: '/pagenum',
       icon: Hash,
-      title: '添加页码',
-      description: '自动给每页添加页码，支持多种位置与格式',
+      title: t.common.pagenum,
+      description: t.nav.pagenumDesc,
       accent: 'text-violet-600 bg-violet-500/10',
     },
     {
       path: '/metadata',
       icon: FileCog,
-      title: '元数据',
-      description: '查看和编辑标题、作者、关键词等文档信息',
+      title: t.common.metadata,
+      description: t.nav.metadataDesc,
       accent: 'text-sky-600 bg-sky-500/10',
     },
     {
       path: '/encrypt',
       icon: Lock,
-      title: '加密 / 解密',
-      description: '添加密码保护，或移除已有密码与权限限制',
+      title: t.common.encrypt,
+      description: t.nav.encryptDesc,
       accent: 'text-red-600 bg-red-500/10',
     },
     {
       path: '/print',
       icon: Printer,
-      title: '打印 PDF',
-      description: '调用系统打印对话框，支持自定义打印范围',
+      title: t.common.print,
+      description: t.nav.printDesc,
       accent: 'text-cyan-600 bg-cyan-500/10',
     },
     {
       path: '/batch',
       icon: Layers,
-      title: '批量处理',
-      description: '一次处理多个 PDF，支持批量压缩、加密、提取文字',
+      title: t.common.batch,
+      description: t.nav.batchDesc,
       accent: 'text-violet-600 bg-violet-500/10',
     },
     {
       path: '/signature',
       icon: PenTool,
-      title: 'PDF 签名',
-      description: '手写签名并添加到 PDF 指定位置，支持调整颜色和粗细',
+      title: t.common.signature,
+      description: t.nav.signatureDesc,
       accent: 'text-orange-600 bg-orange-500/10',
     },
     {
       path: '/form',
       icon: FileEdit,
-      title: '填写表单',
-      description: '填写 PDF 表单域，支持文本框、复选框、单选框等',
+      title: t.common.form,
+      description: t.nav.formDesc,
       accent: 'text-pink-600 bg-pink-500/10',
     },
     {
       path: '/bookmark',
       icon: Bookmark,
-      title: '书签管理',
-      description: '查看、添加、编辑和删除 PDF 书签/目录',
+      title: t.common.bookmark,
+      description: t.nav.bookmarkDesc,
       accent: 'text-indigo-600 bg-indigo-500/10',
     },
     {
       path: '/crop',
       icon: Scissors,
-      title: '页面裁剪',
-      description: '调整 PDF 页面边距，裁剪空白区域',
+      title: t.common.crop,
+      description: t.nav.cropDesc,
       accent: 'text-teal-600 bg-teal-500/10',
     },
   ]
 
   const stats = [
-    { value: '19+', label: 'PDF 工具' },
-    { value: '3', label: '支持平台' },
-    { value: '100%', label: '本地处理' },
-    { value: '0', label: '文件上传' },
+    { value: '19+', label: t.home.features },
+    { value: '3', label: 'Platforms' },
+    { value: '100%', label: 'Local' },
+    { value: '0', label: 'Uploads' },
   ]
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-8 lg:px-10 lg:py-12">
-      {/* Hero */}
       <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-8 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 lg:p-12">
         <div className="absolute inset-0 -z-10 opacity-60">
           <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
@@ -184,37 +186,35 @@ function HomePage() {
         </div>
         <Badge className="mb-4 gap-1.5 border-primary/20 bg-primary/5 text-primary">
           <Sparkles className="h-3 w-3" />
-          跨平台 · 本地处理 · 隐私安全
+          {t.home.subtitle}
         </Badge>
         <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white lg:text-4xl">
-          一站式 PDF 处理工具
+          {t.home.title}
         </h1>
         <p className="mt-3 max-w-2xl text-base text-muted-foreground lg:text-lg">
-          所有操作均在本地完成，文件不上传云端，安全、快速、可离线使用。
-          支持合并、拆分、编辑、文字、水印、页码与打印等常用功能。
+          {t.home.description}
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            <span>隐私安全</span>
+            <span>{t.common.confirm}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Cpu className="h-4 w-4 text-blue-500" />
-            <span>本地处理</span>
+            <span>{t.home.subtitle.split(' · ')[1]}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <WifiOff className="h-4 w-4 text-violet-500" />
-            <span>离线可用</span>
+            <span>{t.home.subtitle.split(' · ')[2]}</span>
           </div>
         </div>
       </section>
 
-      {/* 核心功能 */}
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">核心功能</h2>
-            <p className="text-sm text-muted-foreground">最常用的 PDF 操作，一键开始</p>
+            <h2 className="text-lg font-semibold tracking-tight">{t.nav.core}</h2>
+            <p className="text-sm text-muted-foreground">{t.home.description}</p>
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
@@ -245,7 +245,7 @@ function HomePage() {
                       </p>
                     </div>
                     <div className="mt-2 flex items-center gap-1 text-sm font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                      开始使用
+                      {t.common.apply}
                       <ArrowRight className="h-4 w-4" />
                     </div>
                   </CardContent>
@@ -256,12 +256,11 @@ function HomePage() {
         </div>
       </section>
 
-      {/* 格式转换 */}
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">格式转换</h2>
-            <p className="text-sm text-muted-foreground">图片与 PDF 互转，批量导出</p>
+            <h2 className="text-lg font-semibold tracking-tight">{t.nav.convert}</h2>
+            <p className="text-sm text-muted-foreground">{t.home.description}</p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -294,12 +293,11 @@ function HomePage() {
         </div>
       </section>
 
-      {/* 更多工具 */}
       <section className="mt-10">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">更多工具</h2>
-            <p className="text-sm text-muted-foreground">辅助功能让 PDF 处理更高效</p>
+            <h2 className="text-lg font-semibold tracking-tight">{t.nav.tools}</h2>
+            <p className="text-sm text-muted-foreground">{t.home.description}</p>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -331,7 +329,6 @@ function HomePage() {
         </div>
       </section>
 
-      {/* 统计信息 */}
       <section className="mt-10">
         <Card>
           <CardContent className="grid grid-cols-2 gap-4 p-6 md:grid-cols-4">

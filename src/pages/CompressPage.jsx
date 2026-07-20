@@ -19,6 +19,7 @@ import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useTranslations } from '@/hooks/useLocale.js'
 import { cn } from '@/lib/utils'
 
 function formatSize(bytes) {
@@ -28,6 +29,7 @@ function formatSize(bytes) {
 }
 
 function CompressPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [mode, setMode] = useState('recommended')
   const [jpegQuality, setJpegQuality] = useState(50)
@@ -62,7 +64,7 @@ function CompressPage() {
   const handleCompress = async () => {
     if (!file) return
     setCompressing(true)
-    setStatus({ type: 'info', message: '正在压缩 PDF...' })
+    setStatus({ type: 'info', message: t.common.processing })
     setOutputData(null)
     setOutputSize(0)
 
@@ -75,16 +77,16 @@ function CompressPage() {
       if (saved > 0) {
         setStatus({
           type: 'success',
-          message: `压缩完成！减小 ${formatSize(saved)}（${ratio}%），点击保存导出文件`,
+          message: `${t.common.done} ${formatSize(saved)} (${ratio}%)`,
         })
       } else {
         setStatus({
           type: 'info',
-          message: `压缩完成（体积变化 ${ratio}%），文件可能已被充分压缩`,
+          message: `${t.common.done} (${ratio}%)`,
         })
       }
     } catch (error) {
-      setStatus({ type: 'error', message: `压缩失败：${error.message}` })
+      setStatus({ type: 'error', message: `${t.common.error}: ${error.message}` })
     }
     setCompressing(false)
   }
@@ -100,9 +102,9 @@ function CompressPage() {
 
     const writeResult = await window.electronAPI.writeFile(saveResult.filePath, outputData)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `保存成功！文件已保存到：${saveResult.filePath}` })
+      setStatus({ type: 'success', message: `${t.common.success}: ${saveResult.filePath}` })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: `${t.common.error}: ${writeResult.error}` })
     }
   }
 
@@ -120,7 +122,7 @@ function CompressPage() {
   const modes = [
     {
       value: 'fast',
-      title: '极速压缩',
+      title: t.compress.fast,
       desc: '无损压缩，速度最快',
       icon: Zap,
       color: 'text-emerald-500',
@@ -128,7 +130,7 @@ function CompressPage() {
     },
     {
       value: 'recommended',
-      title: '推荐压缩',
+      title: t.compress.recommended,
       desc: '体积与质量的最佳平衡',
       icon: Target,
       color: 'text-blue-500',
@@ -136,7 +138,7 @@ function CompressPage() {
     },
     {
       value: 'strong',
-      title: '强力压缩',
+      title: t.compress.strong,
       desc: '重编码图片，体积最小',
       icon: Flame,
       color: 'text-rose-500',
@@ -148,35 +150,35 @@ function CompressPage() {
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={FileDown}
-        title="PDF 压缩"
-        description="减小 PDF 文件体积，支持无损与有损两种模式"
+        title={t.compress.title}
+        description={t.compress.description}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={compressing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.common.edit}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={compressing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.common.selectFile}
         </Button>
         <Button size="sm" onClick={handleCompress} disabled={compressing || !file}>
           {compressing ? (
             <>
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              压缩中...
+              {t.common.processing}
             </>
           ) : (
             <>
               <Zap className="mr-1.5 h-4 w-4" />
-              开始压缩
+              {t.compress.startCompress}
             </>
           )}
         </Button>
         <Button size="sm" onClick={handleSave} disabled={compressing || !outputData} variant="secondary">
           <Save className="mr-1.5 h-4 w-4" />
-          保存
+          {t.common.save}
         </Button>
       </PageHeader>
 
@@ -185,14 +187,14 @@ function CompressPage() {
       {!file ? (
         <EmptyState
           icon={FileDown}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 文件，选择压缩模式后开始压缩"
-          actionLabel="选择 PDF 文件"
+          title={t.common.selectFile}
+          description={t.compress.description}
+          actionLabel={t.common.selectFile}
           onAction={handleSelectFile}
           tips={[
-            '极速模式：无损压缩，速度最快',
-            '推荐模式：flate 最高压缩率+对象流',
-            '强力模式：重编码 JPEG 图片，体积最小',
+            'Fast mode: lossless, fastest',
+            'Recommended: best balance',
+            'Strong: recompress JPEG, smallest size',
           ]}
         />
       ) : (
@@ -206,7 +208,7 @@ function CompressPage() {
           <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2">
             <Card className="p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-medium">压缩模式</h3>
+                <h3 className="text-sm font-medium">{t.compress.compressionMode}</h3>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -214,7 +216,7 @@ function CompressPage() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs text-xs">
-                        基于 qpdf-wasm 实现，所有压缩均在本地完成
+                        Powered by qpdf-wasm, all compression done locally
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -255,23 +257,23 @@ function CompressPage() {
 
             <Card className="p-4">
               <div className="mb-3">
-                <h3 className="text-sm font-medium">压缩结果</h3>
+                <h3 className="text-sm font-medium">{t.common.done}</h3>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">原始大小</span>
+                  <span className="text-muted-foreground">{t.compress.originalSize}</span>
                   <span className="font-medium">{formatSize(file.size)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">压缩后大小</span>
+                  <span className="text-muted-foreground">{t.compress.compressedSize}</span>
                   <span className="font-medium">
                     {outputSize > 0 ? formatSize(outputSize) : '-'}
                   </span>
                 </div>
                 <div className="h-px bg-border" />
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">节省空间</span>
+                  <span className="text-muted-foreground">{t.compress.compressionRatio}</span>
                   <span className={`font-bold ${savedRatio && parseFloat(savedRatio) > 0 ? 'text-emerald-500' : 'text-foreground'}`}>
                     {savedRatio !== null ? `${savedRatio}%` : '-'}
                   </span>
@@ -281,7 +283,7 @@ function CompressPage() {
               {mode === 'strong' && (
                 <div className="mt-5">
                   <div className="mb-2 flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">JPEG 图片质量</Label>
+                    <Label className="text-xs text-muted-foreground">{t.compress.jpegQuality}</Label>
                     <span className="text-xs font-medium">{jpegQuality}%</span>
                   </div>
                   <input
@@ -295,7 +297,7 @@ function CompressPage() {
                     className="w-full accent-primary"
                   />
                   <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    数值越小体积越小，图片质量越低
+                    Lower = smaller file, lower quality
                   </p>
                 </div>
               )}

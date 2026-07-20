@@ -1,21 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Sun, Moon, Monitor, Check } from 'lucide-react'
 import useTheme from '@/hooks/useTheme.js'
+import { useTranslations } from '@/hooks/useLocale.js'
 import { cn } from '@/lib/utils'
 
-const OPTIONS = [
-  { value: 'light', label: '浅色', icon: Sun },
-  { value: 'dark', label: '深色', icon: Moon },
-  { value: 'system', label: '跟随系统', icon: Monitor },
-]
-
-/**
- * 主题切换下拉菜单
- */
 function ThemeToggle({ compact = false }) {
   const { mode, resolved, setTheme } = useTheme()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const t = useTranslations()
 
   useEffect(() => {
     if (!open) return
@@ -31,6 +24,12 @@ function ThemeToggle({ compact = false }) {
     }
   }, [open])
 
+  const OPTIONS = [
+    { value: 'light', label: t.common.light, icon: Sun },
+    { value: 'dark', label: t.common.dark, icon: Moon },
+    { value: 'system', label: t.common.system, icon: Monitor },
+  ]
+
   const CurrentIcon = resolved === 'dark' ? Moon : Sun
 
   return (
@@ -38,7 +37,7 @@ function ThemeToggle({ compact = false }) {
       <button
         onClick={() => setOpen(!open)}
         className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        title="切换主题"
+        title={t.common.theme}
       >
         <CurrentIcon className="h-[18px] w-[18px]" />
       </button>

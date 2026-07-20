@@ -22,10 +22,13 @@ import {
   PenTool,
   FileEdit,
   Bookmark,
+  Globe,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.jsx'
+import { useTranslations, useLocale } from '@/hooks/useLocale.js'
+import { getLocaleName } from '@/i18n/index.js'
 import MergePage from './pages/MergePage.jsx'
 import SplitPage from './pages/SplitPage.jsx'
 import EditPage from './pages/EditPage.jsx'
@@ -49,44 +52,47 @@ import CropPage from './pages/CropPage.jsx'
 function App() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
+  const [showLangMenu, setShowLangMenu] = useState(false)
+  const { locale, changeLocale } = useLocale()
+  const t = useTranslations()
 
   const menuGroups = [
     {
-      label: '核心功能',
+      label: t.nav.core,
       items: [
-        { path: '/merge', label: '合并 PDF', icon: FilePlus2, desc: '多文件合一' },
-        { path: '/split', label: '拆分 PDF', icon: Scissors, desc: '按页或范围' },
-        { path: '/edit', label: '编辑 PDF', icon: PencilLine, desc: '旋转/删除/排序' },
+        { path: '/merge', label: t.common.merge, icon: FilePlus2, desc: t.nav.mergeDesc },
+        { path: '/split', label: t.common.split, icon: Scissors, desc: t.nav.splitDesc },
+        { path: '/edit', label: t.common.edit, icon: PencilLine, desc: t.nav.editDesc },
       ],
     },
     {
-      label: '格式转换',
+      label: t.nav.convert,
       items: [
-        { path: '/image-to-pdf', label: '图片转 PDF', icon: ImagePlus, desc: '多图合并' },
-        { path: '/pdf-to-image', label: 'PDF 转图片', icon: ImageIcon, desc: '逐页导出' },
+        { path: '/image-to-pdf', label: t.common.imageToPdf, icon: ImagePlus, desc: t.nav.imageToPdfDesc },
+        { path: '/pdf-to-image', label: t.common.pdfToImage, icon: ImageIcon, desc: t.nav.pdfToImageDesc },
       ],
     },
     {
-      label: '更多工具',
+      label: t.nav.tools,
       items: [
-        { path: '/compress', label: 'PDF 压缩', icon: FileDown, desc: '减小文件体积' },
-        { path: '/extract', label: '提取内容', icon: FileImage, desc: '文字/图片提取' },
-        { path: '/text', label: '添加文字', icon: Type, desc: '指定位置叠加' },
-        { path: '/watermark', label: '添加水印', icon: Droplet, desc: '批量水印' },
-        { path: '/pagenum', label: '添加页码', icon: Hash, desc: '自动页码' },
-        { path: '/metadata', label: '元数据', icon: FileCog, desc: '编辑文档信息' },
-        { path: '/encrypt', label: '加密/解密', icon: Lock, desc: '密码保护' },
-        { path: '/print', label: '打印 PDF', icon: Printer, desc: '调用系统打印' },
+        { path: '/compress', label: t.common.compress, icon: FileDown, desc: t.nav.compressDesc },
+        { path: '/extract', label: t.common.extract, icon: FileImage, desc: t.nav.extractDesc },
+        { path: '/text', label: t.common.text, icon: Type, desc: t.nav.textDesc },
+        { path: '/watermark', label: t.common.watermark, icon: Droplet, desc: t.nav.watermarkDesc },
+        { path: '/pagenum', label: t.common.pagenum, icon: Hash, desc: t.nav.pagenumDesc },
+        { path: '/metadata', label: t.common.metadata, icon: FileCog, desc: t.nav.metadataDesc },
+        { path: '/encrypt', label: t.common.encrypt, icon: Lock, desc: t.nav.encryptDesc },
+        { path: '/print', label: t.common.print, icon: Printer, desc: t.nav.printDesc },
       ],
     },
     {
-      label: '效率工具',
+      label: t.nav.efficiency,
       items: [
-        { path: '/batch', label: '批量处理', icon: Layers, desc: '多文件批量操作' },
-        { path: '/signature', label: 'PDF 签名', icon: PenTool, desc: '手写签名' },
-        { path: '/form', label: '填写表单', icon: FileEdit, desc: '表单域填写' },
-        { path: '/bookmark', label: '书签管理', icon: Bookmark, desc: '目录书签' },
-        { path: '/crop', label: '页面裁剪', icon: Scissors, desc: '调整边距' },
+        { path: '/batch', label: t.common.batch, icon: Layers, desc: t.nav.batchDesc },
+        { path: '/signature', label: t.common.signature, icon: PenTool, desc: t.nav.signatureDesc },
+        { path: '/form', label: t.common.form, icon: FileEdit, desc: t.nav.formDesc },
+        { path: '/bookmark', label: t.common.bookmark, icon: Bookmark, desc: t.nav.bookmarkDesc },
+        { path: '/crop', label: t.common.crop, icon: Scissors, desc: t.nav.cropDesc },
       ],
     },
   ]
@@ -94,16 +100,19 @@ function App() {
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
+  const availableLocales = [
+    { value: 'zh-CN', label: t.common.chinese },
+    { value: 'en-US', label: t.common.english },
+  ]
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-muted/30 text-foreground">
-      {/* 侧边栏 */}
       <aside
         className={cn(
           'flex h-full shrink-0 flex-col border-r bg-card transition-all duration-300 ease-out',
           collapsed ? 'w-[68px]' : 'w-[244px]'
         )}
       >
-        {/* Logo 区 */}
         <div className="flex h-16 items-center gap-3 border-b px-4">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
             <FileText className="h-5 w-5" />
@@ -111,12 +120,11 @@ function App() {
           {!collapsed && (
             <div className="flex flex-col leading-tight">
               <span className="text-sm font-semibold tracking-tight">PDF Master</span>
-              <span className="text-[11px] text-muted-foreground">本地 · 安全 · 快速</span>
+              <span className="text-[11px] text-muted-foreground">{t.home.subtitle}</span>
             </div>
           )}
         </div>
 
-        {/* 导航区 */}
         <nav className="flex-1 overflow-y-auto px-2 py-3">
           <Link
             to="/"
@@ -126,10 +134,10 @@ function App() {
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             )}
-            title="首页"
+            title={t.common.home}
           >
             <Home className="h-[18px] w-[18px] shrink-0" />
-            {!collapsed && <span>首页</span>}
+            {!collapsed && <span>{t.common.home}</span>}
           </Link>
 
           {menuGroups.map((group, gi) => (
@@ -174,26 +182,79 @@ function App() {
           ))}
         </nav>
 
-        {/* 底部操作区 */}
-        <div className="flex items-center gap-1 border-t p-2">
-          <ThemeToggle />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1 justify-start gap-3 px-3 font-normal text-muted-foreground"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? (
-              <PanelLeft className="h-[18px] w-[18px]" />
-            ) : (
+        <div className="flex flex-col gap-1 border-t p-2">
+          <div className="flex items-center justify-between">
+            <ThemeToggle />
+            <div className="relative">
+              <button
+                onClick={() => setShowLangMenu(!showLangMenu)}
+                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title={t.common.language}
+              >
+                <Globe className="h-[18px] w-[18px]" />
+              </button>
+              {showLangMenu && (
+                <div className="absolute bottom-full right-0 z-50 mb-2 w-36 overflow-hidden rounded-md border bg-popover p-1 shadow-md">
+                  {availableLocales.map((loc) => (
+                    <button
+                      key={loc.value}
+                      onClick={() => {
+                        changeLocale(loc.value)
+                        setShowLangMenu(false)
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-sm transition-colors',
+                        locale === loc.value
+                          ? 'bg-accent text-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      )}
+                    >
+                      <Globe className="h-4 w-4" />
+                      <span>{loc.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground"
+              onClick={() => setCollapsed(!collapsed)}
+              title={collapsed ? t.common.expand : t.common.collapse}
+            >
+              {collapsed ? (
+                <PanelLeft className="h-[18px] w-[18px]" />
+              ) : (
+                <PanelLeftClose className="h-[18px] w-[18px]" />
+              )}
+            </Button>
+          </div>
+          {!collapsed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 px-3 font-normal text-muted-foreground"
+              onClick={() => setCollapsed(!collapsed)}
+            >
               <PanelLeftClose className="h-[18px] w-[18px]" />
-            )}
-            {!collapsed && <span>收起侧边栏</span>}
-          </Button>
+              <span>{t.common.collapse}</span>
+            </Button>
+          )}
+          {!collapsed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 px-3 font-normal text-muted-foreground"
+              onClick={() => setShowLangMenu(!showLangMenu)}
+            >
+              <Globe className="h-[18px] w-[18px]" />
+              <span>{t.common.language}: {getLocaleName(locale)}</span>
+            </Button>
+          )}
         </div>
       </aside>
 
-      {/* 主内容区 */}
       <main className="flex flex-1 flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           <Routes>

@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App.jsx'
+import { LocaleProvider } from '@/hooks/useLocale.js'
 import './styles/global.css'
 
 // 提前应用主题，避免首屏闪烁
@@ -19,8 +20,10 @@ import './styles/global.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
+    <LocaleProvider>
+      <HashRouter>
+        <App />
+      </HashRouter>
+    </LocaleProvider>
   </React.StrictMode>,
 )
