@@ -27,7 +27,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.jsx'
-import { useTranslations, useLocale } from '@/hooks/useLocale.js'
+import { useTranslations, useLocale } from '@/hooks/useLocale.jsx'
 import { getLocaleName } from '@/i18n/index.js'
 import MergePage from './pages/MergePage.jsx'
 import SplitPage from './pages/SplitPage.jsx'

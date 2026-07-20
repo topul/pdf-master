@@ -19,7 +19,7 @@ import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useTranslations } from '@/hooks/useLocale.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import { cn } from '@/lib/utils'
 
 function formatSize(bytes) {

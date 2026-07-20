@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App.jsx'
-import { LocaleProvider } from '@/hooks/useLocale.js'
+import { LocaleProvider } from '@/hooks/useLocale.jsx'
 import './styles/global.css'
 
 // 提前应用主题，避免首屏闪烁

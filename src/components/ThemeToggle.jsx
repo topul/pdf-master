@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Sun, Moon, Monitor, Check } from 'lucide-react'
 import useTheme from '@/hooks/useTheme.js'
-import { useTranslations } from '@/hooks/useLocale.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import { cn } from '@/lib/utils'
 
 function ThemeToggle({ compact = false }) {
