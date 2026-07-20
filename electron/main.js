@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, globalShortcut } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
 const fsSync = require('fs')
@@ -25,6 +25,16 @@ const fontkit = {
 
 let mainWindow
 
+function getIconPath() {
+  const iconDir = path.join(__dirname, '../build')
+  if (process.platform === 'win32') {
+    return path.join(iconDir, 'icon.ico')
+  } else if (process.platform === 'darwin') {
+    return path.join(iconDir, 'icon.icns')
+  }
+  return path.join(iconDir, 'icon.png')
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -38,13 +48,26 @@ function createWindow() {
       webSecurity: true,
     },
     title: 'PDF Master',
+    icon: getIconPath(),
+    autoHideMenuBar: true,
   })
+
+  // 完全移除菜单栏（macOS 除外，需要保留最小菜单以支持快捷键）
+  if (process.platform !== 'darwin') {
+    mainWindow.setMenu(null)
+  }
 
   if (app.isPackaged) {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   } else {
     mainWindow.loadURL('http://localhost:5173')
-    mainWindow.webContents.openDevTools()
+    // 开发环境下注册 F12 快捷键打开开发者工具
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12' || (input.control && input.shift && input.key === 'I')) {
+        mainWindow.webContents.toggleDevTools()
+        event.preventDefault()
+      }
+    })
   }
 
   mainWindow.on('closed', () => {
@@ -66,6 +89,15 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// 开发环境下打开开发者工具
+ipcMain.handle('app:openDevTools', async () => {
+  if (mainWindow && !app.isPackaged) {
+    mainWindow.webContents.openDevTools()
+    return { success: true }
+  }
+  return { success: false, error: 'Not available in production or window not ready' }
 })
 
 ipcMain.handle('dialog:openFiles', async (event, options) => {

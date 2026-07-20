@@ -16,7 +16,8 @@
     "electron:build": "vite build && electron-builder",
     "electron:build:linux": "vite build && electron-builder --linux",
     "electron:build:win": "vite build && electron-builder --win",
-    "electron:build:mac": "vite build && electron-builder --mac"
+    "electron:build:mac": "vite build && electron-builder --mac",
+    "generate-icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@neslinesli93/qpdf-wasm": "^0.3.0",
@@ -69,6 +70,7 @@
     "files": [
       "electron/**/*",
       "dist/**/*",
+      "build/**/*",
       "package.json"
     ],
     "asar": true,
