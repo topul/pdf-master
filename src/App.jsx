@@ -194,7 +194,10 @@ function App() {
                 <Globe className="h-[18px] w-[18px]" />
               </button>
               {showLangMenu && (
-                <div className="absolute bottom-full right-0 z-50 mb-2 w-36 overflow-hidden rounded-md border bg-popover p-1 shadow-md">
+                <div className={cn(
+                  'absolute z-50 w-36 overflow-hidden rounded-md border bg-popover p-1 shadow-md',
+                  collapsed ? 'left-full top-0 ml-2' : 'bottom-full right-0 mb-2'
+                )}>
                   {availableLocales.map((loc) => (
                     <button
                       key={loc.value}
