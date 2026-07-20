@@ -5,49 +5,39 @@ const zlib = require('zlib')
 const SIZE = 256
 const OUTPUT_DIR = path.join(__dirname, '../build')
 
-// 颜色定义 (indigo-500 #6366f1)
 const BG_R = 99
 const BG_G = 102
 const BG_B = 241
+const WHITE_R = 255
+const WHITE_G = 255
+const WHITE_B = 255
 
-// 圆角半径
-const RADIUS = 48
+const RADIUS = 32
 
 function createPNG() {
   const width = SIZE
   const height = SIZE
-
-  // 每行: width * 4 (RGBA) + 1 (filter byte)
   const rowSize = width * 4 + 1
   const rawData = Buffer.alloc(rowSize * height)
 
   for (let y = 0; y < height; y++) {
     const rowStart = y * rowSize
-    rawData[rowStart] = 0 // filter: None
+    rawData[rowStart] = 0
 
     for (let x = 0; x < width; x++) {
       const px = rowStart + 1 + x * 4
 
-      // 计算到四个角的距离
-      const dx1 = x - RADIUS
-      const dx2 = x - (width - 1 - RADIUS)
-      const dy1 = y - RADIUS
-      const dy2 = y - (height - 1 - RADIUS)
-
-      // 判断是否在圆角矩形内
       let inside = false
       if (x >= RADIUS && x <= width - 1 - RADIUS) {
         inside = true
       } else if (y >= RADIUS && y <= height - 1 - RADIUS) {
         inside = true
       } else {
-        // 计算到最近的圆角中心的距离
         let cx, cy
         if (x < RADIUS && y < RADIUS) { cx = RADIUS; cy = RADIUS }
         else if (x > width - 1 - RADIUS && y < RADIUS) { cx = width - 1 - RADIUS; cy = RADIUS }
         else if (x < RADIUS && y > height - 1 - RADIUS) { cx = RADIUS; cy = height - 1 - RADIUS }
         else { cx = width - 1 - RADIUS; cy = height - 1 - RADIUS }
-
         const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
         inside = dist <= RADIUS
       }
@@ -66,34 +56,151 @@ function createPNG() {
     }
   }
 
-  // 压缩
+  drawFileIcon(rawData, width, rowSize)
+  drawPDFText(rawData, width, rowSize)
+
   const compressed = zlib.deflateSync(rawData, { level: 9 })
 
-  // 构建 PNG
   const ihdrData = Buffer.alloc(13)
   ihdrData.writeUInt32BE(width, 0)
   ihdrData.writeUInt32BE(height, 4)
-  ihdrData[8] = 8   // bit depth
-  ihdrData[9] = 6   // color type: RGBA
-  ihdrData[10] = 0  // compression
-  ihdrData[11] = 0  // filter method
-  ihdrData[12] = 0  // interlace
+  ihdrData[8] = 8
+  ihdrData[9] = 6
+  ihdrData[10] = 0
+  ihdrData[11] = 0
+  ihdrData[12] = 0
 
   const chunks = []
-
-  // PNG signature
   chunks.push(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
-
-  // IHDR
   chunks.push(makeChunk('IHDR', ihdrData))
-
-  // IDAT
   chunks.push(makeChunk('IDAT', compressed))
-
-  // IEND
   chunks.push(makeChunk('IEND', Buffer.alloc(0)))
 
   return Buffer.concat(chunks)
+}
+
+function drawFileIcon(rawData, width, rowSize) {
+  const margin = 50
+  const fileWidth = width - margin * 2
+  const fileHeight = fileWidth
+  const startX = margin
+  const startY = margin + 20
+
+  const fileRadius = 8
+
+  for (let y = startY; y < startY + fileHeight; y++) {
+    for (let x = startX; x < startX + fileWidth; x++) {
+      const px = y * rowSize + 1 + x * 4
+
+      let inside = false
+      if (x >= startX + fileRadius && x <= startX + fileWidth - 1 - fileRadius) {
+        inside = true
+      } else if (y >= startY + fileRadius && y <= startY + fileHeight - 1 - fileRadius) {
+        inside = true
+      } else {
+        let cx = x < startX + fileRadius ? startX + fileRadius : startX + fileWidth - 1 - fileRadius
+        let cy = y < startY + fileRadius ? startY + fileRadius : startY + fileHeight - 1 - fileRadius
+        const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+        inside = dist <= fileRadius
+      }
+
+      if (inside) {
+        rawData[px] = WHITE_R
+        rawData[px + 1] = WHITE_G
+        rawData[px + 2] = WHITE_B
+        rawData[px + 3] = 255
+      }
+    }
+  }
+
+  for (let x = startX; x < startX + fileWidth; x++) {
+    const px = startY * rowSize + 1 + x * 4
+    rawData[px] = 220
+    rawData[px + 1] = 220
+    rawData[px + 2] = 220
+    rawData[px + 3] = 255
+  }
+
+  for (let y = startY + 20; y < startY + fileHeight; y++) {
+    const px = y * rowSize + 1 + startX * 4
+    rawData[px] = 220
+    rawData[px + 1] = 220
+    rawData[px + 2] = 220
+    rawData[px + 3] = 255
+  }
+
+  for (let y = startY; y < startY + 35; y++) {
+    for (let x = startX; x < startX + 35; x++) {
+      const px = y * rowSize + 1 + x * 4
+      rawData[px] = BG_R
+      rawData[px + 1] = BG_G
+      rawData[px + 2] = BG_B
+      rawData[px + 3] = 255
+    }
+  }
+}
+
+function drawPDFText(rawData, width, rowSize) {
+  const font = {
+    'P': [
+      'XXXXX',
+      'X   X',
+      'XXXXX',
+      'X   X',
+      'X   X',
+      'X   X',
+      'XXXXX',
+    ],
+    'D': [
+      'XXXXX',
+      'X   X',
+      'X   X',
+      'X   X',
+      'X   X',
+      'X   X',
+      'XXXXX',
+    ],
+    'F': [
+      'XXXXX',
+      'X',
+      'XXXXX',
+      'X',
+      'X',
+      'X',
+      'X',
+    ],
+  }
+
+  const cellSize = 6
+  const textY = width / 2 + 20
+  const startX = (width - 3 * 7 * cellSize - 2 * cellSize) / 2
+
+  const chars = ['P', 'D', 'F']
+
+  chars.forEach((char, ci) => {
+    const charData = font[char]
+    if (!charData) return
+
+    charData.forEach((row, ri) => {
+      row.split('').forEach((pixel, pi) => {
+        if (pixel === 'X') {
+          for (let dy = 0; dy < cellSize; dy++) {
+            for (let dx = 0; dx < cellSize; dx++) {
+              const x = startX + ci * (7 * cellSize + cellSize) + pi * cellSize + dx
+              const y = textY + ri * cellSize + dy
+              if (x >= 0 && x < width && y >= 0 && y < width) {
+                const px = y * rowSize + 1 + x * 4
+                rawData[px] = BG_R
+                rawData[px + 1] = BG_G
+                rawData[px + 2] = BG_B
+                rawData[px + 3] = 255
+              }
+            }
+          }
+        }
+      })
+    })
+  })
 }
 
 function makeChunk(type, data) {
@@ -127,46 +234,31 @@ function crc32(buf) {
 
 function createICO(pngBuffer) {
   const iconDir = Buffer.alloc(6)
-  iconDir.writeUInt16LE(0, 0) // reserved
-  iconDir.writeUInt16LE(1, 2) // type: icon
-  iconDir.writeUInt16LE(1, 4) // count
+  iconDir.writeUInt16LE(0, 0)
+  iconDir.writeUInt16LE(1, 2)
+  iconDir.writeUInt16LE(1, 4)
 
   const dirEntry = Buffer.alloc(16)
-  dirEntry[0] = 0 // width (0 means 256)
-  dirEntry[1] = 0 // height (0 means 256)
-  dirEntry[2] = 0 // colors
-  dirEntry[3] = 0 // reserved
-  dirEntry.writeUInt16LE(1, 4)  // color planes
-  dirEntry.writeUInt16LE(32, 6) // bits per pixel
-  dirEntry.writeUInt32LE(pngBuffer.length, 8) // size
-  dirEntry.writeUInt32LE(22, 12) // offset (6 + 16)
+  dirEntry[0] = 0
+  dirEntry[1] = 0
+  dirEntry[2] = 0
+  dirEntry[3] = 0
+  dirEntry.writeUInt16LE(1, 4)
+  dirEntry.writeUInt16LE(32, 6)
+  dirEntry.writeUInt32LE(pngBuffer.length, 8)
+  dirEntry.writeUInt32LE(22, 12)
 
   return Buffer.concat([iconDir, dirEntry, pngBuffer])
 }
 
 function createICNS(pngBuffer) {
-  // icns format: header + entries
-  // entry format: type(4) + size(4) + data
-
   const entries = []
 
-  // ic12 (256x256 @2x PNG) for Retina
-  // ic11 (128x128 @2x PNG)
-  // ic10 (16x16 @2x PNG)
-  // ic09 (512x512 PNG)
-  // ic08 (256x256 PNG)
-  // ic07 (128x128 PNG)
-  // icp6 (64x64 PNG)
-  // icp5 (32x32 PNG)
-  // icp4 (16x16 PNG)
-
-  // For simplicity, just add ic08 (256x256 PNG)
   const entryHeader = Buffer.alloc(8)
   entryHeader.write('ic08', 0, 4, 'ascii')
   entryHeader.writeUInt32BE(8 + pngBuffer.length, 4)
   entries.push(entryHeader, pngBuffer)
 
-  // Also add a TOC (table of contents) entry
   const tocHeader = Buffer.alloc(8)
   tocHeader.write('TOC ', 0, 4, 'ascii')
   tocHeader.writeUInt32BE(8 + 8, 4)
@@ -183,7 +275,6 @@ function createICNS(pngBuffer) {
   return Buffer.concat([header, allEntries])
 }
 
-// Main
 const pngBuffer = createPNG()
 fs.writeFileSync(path.join(OUTPUT_DIR, 'icon.png'), pngBuffer)
 console.log('Created build/icon.png')
