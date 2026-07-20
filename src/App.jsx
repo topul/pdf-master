@@ -183,7 +183,7 @@ function App() {
         </nav>
 
         <div className="flex flex-col gap-1 border-t p-2">
-          <div className="flex items-center justify-between">
+          <div className={cn('flex', collapsed ? 'flex-col items-center gap-1' : 'items-center justify-between')}>
             <ThemeToggle />
             <div className="relative">
               <button
