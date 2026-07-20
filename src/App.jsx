@@ -233,28 +233,6 @@ function App() {
               )}
             </Button>
           </div>
-          {!collapsed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-2 px-3 font-normal text-muted-foreground"
-              onClick={() => setCollapsed(!collapsed)}
-            >
-              <PanelLeftClose className="h-[18px] w-[18px]" />
-              <span>{t.common.collapse}</span>
-            </Button>
-          )}
-          {!collapsed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-2 px-3 font-normal text-muted-foreground"
-              onClick={() => setShowLangMenu(!showLangMenu)}
-            >
-              <Globe className="h-[18px] w-[18px]" />
-              <span>{t.common.language}: {getLocaleName(locale)}</span>
-            </Button>
-          )}
         </div>
       </aside>
 
