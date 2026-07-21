@@ -4,6 +4,9 @@
 
 ---
 
+<img width="2154" height="2042" alt="image" src="https://github.com/user-attachments/assets/2676e8ed-78bd-4750-aaf7-37fb619d5526" />
+
+
 **[English Version / 英文版](README.md)**
 
 ---
