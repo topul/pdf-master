@@ -382,6 +382,7 @@ export default {
     empty: '暂无字段',
     clickTip: '点击页面任意位置添加字段，右侧字段列表可管理',
     error: '保存失败，请重试',
+    addFiles: '添加',
   },
   batchRename: {
     title: '批量重命名',

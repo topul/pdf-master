@@ -29,7 +29,7 @@ export default function BatchRenamePage() {
       properties: ['openFile', 'multiSelections'],
       filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
     })
-    if (result.canceled) return
+    if (result.canceled || !result.filePaths || result.filePaths.length === 0) return
 
     const newFiles = []
     for (const filePath of result.filePaths) {
@@ -44,7 +44,7 @@ export default function BatchRenamePage() {
         })
       }
     }
-    setFiles(newFiles)
+    setFiles((prev) => [...prev, ...newFiles])
     setPreview([])
     setRenamed(false)
   }
@@ -143,19 +143,16 @@ export default function BatchRenamePage() {
       {files.length === 0 ? (
         <Card className="mb-6">
           <CardContent className="py-8">
-            <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors">
+            <button
+              type="button"
+              onClick={handleSelectFiles}
+              className="flex w-full flex-col items-center justify-center h-32 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors"
+            >
               <Upload className="h-8 w-8 text-muted-foreground mb-2" />
               <span className="text-sm text-muted-foreground">
-                {t.common.selectFiles || '选择 PDF 文件'}
+                {t.common.selectFiles || '选择 PDF 文件（可多选）'}
               </span>
-              <input
-                type="file"
-                accept=".pdf"
-                multiple
-                className="hidden"
-                onChange={handleSelectFiles}
-              />
-            </label>
+            </button>
           </CardContent>
         </Card>
       ) : (
@@ -165,8 +162,19 @@ export default function BatchRenamePage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center justify-between">
                 <span>{t.batchRename?.fileList || '文件列表'}</span>
-                <span className="text-xs text-muted-foreground">
-                  {files.length} {t.batchRename?.files || '个文件'}
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {files.length} {t.batchRename?.files || '个文件'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSelectFiles}
+                    className="h-6 px-2 text-xs"
+                  >
+                    <Upload className="h-3 w-3 mr-1" />
+                    {t.common.addFiles || '添加'}
+                  </Button>
                 </span>
               </CardTitle>
             </CardHeader>

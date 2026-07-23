@@ -382,6 +382,7 @@ export default {
     empty: 'No fields',
     clickTip: 'Click anywhere on the page to add a field',
     error: 'Save failed, please retry',
+    addFiles: 'Add',
   },
   batchRename: {
     title: 'Batch Rename',
