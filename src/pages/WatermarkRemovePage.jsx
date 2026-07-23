@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +10,7 @@ import { Upload, FileText, Eraser, Download, Eye } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import { saveAs } from 'file-saver'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 export default function WatermarkRemovePage() {
   const t = useTranslations()

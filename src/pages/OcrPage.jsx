@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import Tesseract from 'tesseract.js'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, Scan, Copy, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 export default function OcrPage() {
   const t = useTranslations()

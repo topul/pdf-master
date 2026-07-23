@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, GitCompare, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 export default function ComparePage() {
   const t = useTranslations()
