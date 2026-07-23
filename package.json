@@ -1,6 +1,6 @@
 {
   "name": "pdf-master",
-  "version": "1.3.0",
+  "version": "1.8.0",
   "description": "跨平台 PDF 处理桌面应用，支持合并、拆分、编辑等功能",
   "main": "electron/main.js",
   "author": {
