@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, FileText, Eraser, Download, Eye } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
-import { saveAs } from 'file-saver'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
 
@@ -98,8 +97,12 @@ export default function WatermarkRemovePage() {
 
       // 下载处理后的文件
       const blob = new Blob([modifiedBytes], { type: 'application/pdf' })
-      const fileName = (file?.name?.replace('.pdf', '') || 'document') + '_no_watermark.pdf'
-      saveAs(blob, fileName)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = (file?.name?.replace('.pdf', '') || 'document') + '_no_watermark.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
 
       // 更新预览
       setPreviewUrl(URL.createObjectURL(blob))
