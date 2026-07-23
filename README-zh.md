@@ -45,6 +45,13 @@
 - 📊 **PDF 转 Excel** - 提取 PDF 中的表格数据到 Excel 文件（.xlsx），自动列检测
 - 🖌️ **PDF 批注** - 添加高亮、文字注释和便签（多颜色，保存到 PDF）
 - 📝 **表单创建** - 在 PDF 上添加 AcroForm 字段（文本框、复选框、单选框、下拉框）
+- 🏷️ **批量重命名** - 按自定义规则批量重命名 PDF 文件（支持 {index}、{name} 等变量）
+
+### 用户体验
+- 🕘 **最近文件** - 自动保存最近打开的文件，首页一键快速打开
+- 🖱️ **右键菜单** - 文件列表支持右键快速打开、删除操作
+- 🌐 **多语言支持** - 一键切换简体中文/英文界面
+- 📁 **分类折叠** - 首页工具分类默认折叠，节省空间，点击展开
 
 ### 特点
 - 🔒 **本地处理** - 所有操作均在本地完成，文件不上传云端，保护隐私
@@ -112,14 +119,20 @@ pdf-master/
 │   │   ├── ImageToPdfPage.jsx # 图片转 PDF
 │   │   ├── PdfToImagePage.jsx # PDF 转图片
 │   │   ├── BatchPage.jsx      # 批量处理
+│   │   ├── BatchRenamePage.jsx# 批量重命名
 │   │   ├── SignaturePage.jsx # PDF 签名
 │   │   ├── FormPage.jsx      # 填写表单
 │   │   ├── BookmarkPage.jsx   # 书签管理
 │   │   └── CropPage.jsx      # 页面裁剪
+│   ├── components/
+│   │   └── ContextMenu.jsx    # 右键菜单组件
+│   ├── hooks/
+│   │   └── useFileSelector.js # 文件选择 Hook（自动记录历史）
 │   ├── styles/
 │   │   └── global.css         # 全局样式
 │   ├── utils/
-│   │   └── pdfUtils.js        # PDF 处理工具函数
+│   │   ├── pdfUtils.js        # PDF 处理工具函数
+│   │   └── history.js         # 最近文件历史记录管理
 │   ├── App.jsx                # 根组件（侧边栏布局）
 │   ├── main.jsx               # 入口文件
 │   └── index.html             # HTML 模板

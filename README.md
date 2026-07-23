@@ -45,6 +45,13 @@ A cross-platform PDF processing desktop application built with Electron + React,
 - 📊 **PDF to Excel** - Extract table data from PDF to Excel (.xlsx), auto column detection
 - 🖌️ **PDF Annotate** - Add highlights, text annotations and sticky notes (multiple colors, save to PDF)
 - 📝 **Create Form** - Add AcroForm fields (text, checkbox, radio, dropdown) to existing PDF
+- 🏷️ **Batch Rename** - Rename multiple PDF files at once with custom patterns ({index}, {name}, etc.)
+
+### User Experience
+- 🕘 **Recent Files** - Auto-save recently opened files, quick access from home page
+- 🖱️ **Context Menu** - Right-click file entries for quick open/delete actions
+- 🌐 **Multi-language** - Support Chinese (Simplified) and English with one-click switching
+- 📁 **Collapsible Categories** - Home page tools organized in collapsible sections for space saving
 
 ### Highlights
 - 🔒 **Local Processing** - All operations are done locally, files never uploaded to cloud, protecting privacy
@@ -112,14 +119,20 @@ pdf-master/
 │   │   ├── ImageToPdfPage.jsx # Image to PDF
 │   │   ├── PdfToImagePage.jsx # PDF to image
 │   │   ├── BatchPage.jsx      # Batch processing
+│   │   ├── BatchRenamePage.jsx# Batch rename PDF files
 │   │   ├── SignaturePage.jsx  # PDF signature
 │   │   ├── FormPage.jsx       # Fill form
 │   │   ├── BookmarkPage.jsx   # Bookmark management
 │   │   └── CropPage.jsx       # Page cropping
+│   ├── components/
+│   │   └── ContextMenu.jsx    # Right-click context menu component
+│   ├── hooks/
+│   │   └── useFileSelector.js # File selection hook with history tracking
 │   ├── styles/
 │   │   └── global.css         # Global styles
 │   ├── utils/
-│   │   └── pdfUtils.js        # PDF processing utility functions
+│   │   ├── pdfUtils.js        # PDF processing utility functions
+│   │   └── history.js         # Recent files history management
 │   ├── App.jsx                # Root component (sidebar layout)
 │   ├── main.jsx               # Entry file
 │   └── index.html             # HTML template
