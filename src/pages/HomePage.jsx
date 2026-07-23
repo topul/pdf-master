@@ -13,6 +13,7 @@ import {
   Cpu,
   WifiOff,
   Sparkles,
+  ChevronDown,
   ImagePlus,
   Image as ImageIcon,
   FileCog,
@@ -39,6 +40,8 @@ function HomePage() {
   const t = useTranslations()
   const [history, setHistory] = useState([])
   const [contextFile, setContextFile] = useState(null)
+  const [showConvert, setShowConvert] = useState(false)
+  const [showTools, setShowTools] = useState(false)
 
   useEffect(() => {
     setHistory(getHistory())
@@ -311,76 +314,98 @@ function HomePage() {
       </section>
 
       <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
+        <button
+          onClick={() => setShowConvert(!showConvert)}
+          className="mb-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 hover:bg-muted/50 transition-colors"
+        >
+          <div className="text-left">
             <h2 className="text-lg font-semibold tracking-tight">{t.nav.convert}</h2>
             <p className="text-sm text-muted-foreground">{t.home.description}</p>
           </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {convertFeatures.map((feature) => {
-            const Icon = feature.icon
-            return (
-              <Link key={feature.path} to={feature.path} className="group">
-                <Card className="relative h-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
-                  <CardContent className="flex h-full items-center gap-4 p-5">
-                    <div
-                      className={cn(
-                        'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
-                        feature.accent
-                      )}
-                    >
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-base font-semibold">{feature.title}</h3>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        {feature.description}
-                      </p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-                  </CardContent>
-                </Card>
-              </Link>
-            )
-          })}
-        </div>
+          <ChevronDown
+            className={cn(
+              'h-5 w-5 text-muted-foreground transition-transform',
+              showConvert && 'rotate-180'
+            )}
+          />
+        </button>
+        {showConvert && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {convertFeatures.map((feature) => {
+              const Icon = feature.icon
+              return (
+                <Link key={feature.path} to={feature.path} className="group">
+                  <Card className="relative h-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
+                    <CardContent className="flex h-full items-center gap-4 p-5">
+                      <div
+                        className={cn(
+                          'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+                          feature.accent
+                        )}
+                      >
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold">{feature.title}</h3>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                          {feature.description}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
+        <button
+          onClick={() => setShowTools(!showTools)}
+          className="mb-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 hover:bg-muted/50 transition-colors"
+        >
+          <div className="text-left">
             <h2 className="text-lg font-semibold tracking-tight">{t.nav.tools}</h2>
             <p className="text-sm text-muted-foreground">{t.home.description}</p>
           </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {moreFeatures.map((feature) => {
-            const Icon = feature.icon
-            return (
-              <Link key={feature.path} to={feature.path} className="group">
-                <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                  <CardContent className="flex h-full flex-col gap-3 p-5">
-                    <div
-                      className={cn(
-                        'flex h-10 w-10 items-center justify-center rounded-lg',
-                        feature.accent
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold">{feature.title}</h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {feature.description}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            )
-          })}
-        </div>
+          <ChevronDown
+            className={cn(
+              'h-5 w-5 text-muted-foreground transition-transform',
+              showTools && 'rotate-180'
+            )}
+          />
+        </button>
+        {showTools && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {moreFeatures.map((feature) => {
+              const Icon = feature.icon
+              return (
+                <Link key={feature.path} to={feature.path} className="group">
+                  <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                    <CardContent className="flex h-full flex-col gap-3 p-5">
+                      <div
+                        className={cn(
+                          'flex h-10 w-10 items-center justify-center rounded-lg',
+                          feature.accent
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold">{feature.title}</h3>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <section className="mt-10">
