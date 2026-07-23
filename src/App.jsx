@@ -26,6 +26,10 @@ import {
   GitCompare,
   Scan,
   Eraser,
+  FileType,
+  FileSpreadsheet,
+  Highlighter,
+  ListChecks,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -55,6 +59,10 @@ import CropPage from './pages/CropPage.jsx'
 import ComparePage from './pages/ComparePage.jsx'
 import OcrPage from './pages/OcrPage.jsx'
 import WatermarkRemovePage from './pages/WatermarkRemovePage.jsx'
+import PdfToWordPage from './pages/PdfToWordPage.jsx'
+import PdfToExcelPage from './pages/PdfToExcelPage.jsx'
+import AnnotatePage from './pages/AnnotatePage.jsx'
+import FormCreatePage from './pages/FormCreatePage.jsx'
 
 function App() {
   const location = useLocation()
@@ -80,6 +88,8 @@ function App() {
       items: [
         { path: '/image-to-pdf', label: t.common.imageToPdf, icon: ImagePlus, desc: t.nav.imageToPdfDesc },
         { path: '/pdf-to-image', label: t.common.pdfToImage, icon: ImageIcon, desc: t.nav.pdfToImageDesc },
+        { path: '/pdf-to-word', label: t.common.pdfToWord, icon: FileType, desc: t.nav.pdfToWordDesc },
+        { path: '/pdf-to-excel', label: t.common.pdfToExcel, icon: FileSpreadsheet, desc: t.nav.pdfToExcelDesc },
       ],
     },
     {
@@ -102,7 +112,9 @@ function App() {
         { path: '/compare', label: t.common.compare, icon: GitCompare, desc: t.nav.compareDesc },
         { path: '/ocr', label: t.common.ocr, icon: Scan, desc: t.nav.ocrDesc },
         { path: '/watermark-remove', label: t.common.watermarkRemove, icon: Eraser, desc: t.nav.watermarkRemoveDesc },
+        { path: '/annotate', label: t.common.annotate, icon: Highlighter, desc: t.nav.annotateDesc },
         { path: '/signature', label: t.common.signature, icon: PenTool, desc: t.nav.signatureDesc },
+        { path: '/form-create', label: t.common.formCreate, icon: ListChecks, desc: t.nav.formCreateDesc },
         { path: '/form', label: t.common.form, icon: FileEdit, desc: t.nav.formDesc },
         { path: '/bookmark', label: t.common.bookmark, icon: Bookmark, desc: t.nav.bookmarkDesc },
         { path: '/crop', label: t.common.crop, icon: Scissors, desc: t.nav.cropDesc },
@@ -270,6 +282,10 @@ function App() {
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/ocr" element={<OcrPage />} />
             <Route path="/watermark-remove" element={<WatermarkRemovePage />} />
+            <Route path="/pdf-to-word" element={<PdfToWordPage />} />
+            <Route path="/pdf-to-excel" element={<PdfToExcelPage />} />
+            <Route path="/annotate" element={<AnnotatePage />} />
+            <Route path="/form-create" element={<FormCreatePage />} />
             <Route path="/signature" element={<SignaturePage />} />
             <Route path="/form" element={<FormPage />} />
             <Route path="/bookmark" element={<BookmarkPage />} />

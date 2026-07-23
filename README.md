@@ -40,6 +40,12 @@ A cross-platform PDF processing desktop application built with Electron + React,
 - 🔖 **Bookmark Management** - View, add, edit, delete PDF bookmarks/toc
 - ✂️ **Page Cropping** - Adjust PDF page margins with real-time preview
 
+### Format Conversion
+- 📝 **PDF to Word** - Convert PDF to editable Word document (.docx), preserving layout option
+- 📊 **PDF to Excel** - Extract table data from PDF to Excel (.xlsx), auto column detection
+- 🖌️ **PDF Annotate** - Add highlights, text annotations and sticky notes (multiple colors, save to PDF)
+- 📝 **Create Form** - Add AcroForm fields (text, checkbox, radio, dropdown) to existing PDF
+
 ### Highlights
 - 🔒 **Local Processing** - All operations are done locally, files never uploaded to cloud, protecting privacy
 - 👁️ **Real-time Preview** - True PDF page rendering based on pdfjs-dist
