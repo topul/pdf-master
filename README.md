@@ -32,6 +32,9 @@ A cross-platform PDF processing desktop application built with Electron + React,
 
 ### Productivity Tools
 - 📦 **Batch Processing** - Process multiple PDFs at once (compress, encrypt, extract text)
+- 🔍 **PDF Compare** - Compare two PDF files and highlight differences
+- 📝 **OCR Recognition** - Recognize text from scanned PDFs (multi-language support)
+- 🧹 **Remove Watermark** - Remove text watermarks from PDF
 - ✍️ **PDF Signature** - Handwritten signature and add to specified position (color, thickness, multiple signatures)
 - 📝 **Fill Form** - Fill PDF AcroForm fields (text boxes, checkboxes, radio buttons, dropdowns)
 - 🔖 **Bookmark Management** - View, add, edit, delete PDF bookmarks/toc

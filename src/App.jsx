@@ -23,11 +23,15 @@ import {
   FileEdit,
   Bookmark,
   Globe,
+  GitCompare,
+  Scan,
+  Eraser,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/ThemeToggle.jsx'
 import { useTranslations, useLocale } from '@/hooks/useLocale.jsx'
+import useShortcuts from '@/hooks/useShortcuts.jsx'
 import { getLocaleName } from '@/i18n/index.js'
 import MergePage from './pages/MergePage.jsx'
 import SplitPage from './pages/SplitPage.jsx'
@@ -48,6 +52,9 @@ import SignaturePage from './pages/SignaturePage.jsx'
 import FormPage from './pages/FormPage.jsx'
 import BookmarkPage from './pages/BookmarkPage.jsx'
 import CropPage from './pages/CropPage.jsx'
+import ComparePage from './pages/ComparePage.jsx'
+import OcrPage from './pages/OcrPage.jsx'
+import WatermarkRemovePage from './pages/WatermarkRemovePage.jsx'
 
 function App() {
   const location = useLocation()
@@ -55,6 +62,9 @@ function App() {
   const [showLangMenu, setShowLangMenu] = useState(false)
   const { locale, changeLocale } = useLocale()
   const t = useTranslations()
+
+  // 注册快捷键
+  useShortcuts()
 
   const menuGroups = [
     {
@@ -89,6 +99,9 @@ function App() {
       label: t.nav.efficiency,
       items: [
         { path: '/batch', label: t.common.batch, icon: Layers, desc: t.nav.batchDesc },
+        { path: '/compare', label: t.common.compare, icon: GitCompare, desc: t.nav.compareDesc },
+        { path: '/ocr', label: t.common.ocr, icon: Scan, desc: t.nav.ocrDesc },
+        { path: '/watermark-remove', label: t.common.watermarkRemove, icon: Eraser, desc: t.nav.watermarkRemoveDesc },
         { path: '/signature', label: t.common.signature, icon: PenTool, desc: t.nav.signatureDesc },
         { path: '/form', label: t.common.form, icon: FileEdit, desc: t.nav.formDesc },
         { path: '/bookmark', label: t.common.bookmark, icon: Bookmark, desc: t.nav.bookmarkDesc },
@@ -254,6 +267,9 @@ function App() {
             <Route path="/encrypt" element={<EncryptPage />} />
             <Route path="/print" element={<PrintPage />} />
             <Route path="/batch" element={<BatchPage />} />
+            <Route path="/compare" element={<ComparePage />} />
+            <Route path="/ocr" element={<OcrPage />} />
+            <Route path="/watermark-remove" element={<WatermarkRemovePage />} />
             <Route path="/signature" element={<SignaturePage />} />
             <Route path="/form" element={<FormPage />} />
             <Route path="/bookmark" element={<BookmarkPage />} />

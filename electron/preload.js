@@ -16,4 +16,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pdfDecrypt: (fileData, password) => ipcRenderer.invoke('pdf:decrypt', { fileData, password }),
   pdfCompress: (fileData, mode, jpegQuality) => ipcRenderer.invoke('pdf:compress', { fileData, mode, jpegQuality }),
   pdfExtractImages: (fileData) => ipcRenderer.invoke('pdf:extractImages', { fileData }),
+  // 快捷键监听
+  onShortcut: (callback) => {
+    ipcRenderer.on('shortcut:openFile', () => callback('openFile'))
+    ipcRenderer.on('shortcut:newWindow', () => callback('newWindow'))
+    ipcRenderer.on('shortcut:goHome', () => callback('goHome'))
+    ipcRenderer.on('shortcut:gotoPage', (event, pageIndex) => callback('gotoPage', pageIndex))
+  },
+  removeShortcutListeners: () => {
+    ipcRenderer.removeAllListeners('shortcut:openFile')
+    ipcRenderer.removeAllListeners('shortcut:newWindow')
+    ipcRenderer.removeAllListeners('shortcut:goHome')
+    ipcRenderer.removeAllListeners('shortcut:gotoPage')
+  },
 })

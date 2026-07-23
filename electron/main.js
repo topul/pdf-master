@@ -78,12 +78,48 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow()
 
+  // 注册全局快捷键
+  registerShortcuts()
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     }
   })
 })
+
+// 注册快捷键
+function registerShortcuts() {
+  // Ctrl/Cmd + O: 打开文件对话框
+  globalShortcut.register('CommandOrControl+O', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('shortcut:openFile')
+    }
+  })
+
+  // Ctrl/Cmd + N: 新建窗口
+  globalShortcut.register('CommandOrControl+N', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('shortcut:newWindow')
+    }
+  })
+
+  // Ctrl/Cmd + Home: 返回首页
+  globalShortcut.register('CommandOrControl+Home', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('shortcut:goHome')
+    }
+  })
+
+  // Ctrl/Cmd + 1-9: 快速跳转功能页
+  for (let i = 1; i <= 9; i++) {
+    globalShortcut.register(`CommandOrControl+${i}`, () => {
+      if (mainWindow) {
+        mainWindow.webContents.send('shortcut:gotoPage', i)
+      }
+    })
+  }
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
