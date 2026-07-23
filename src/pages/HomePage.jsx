@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   FilePlus2,
@@ -23,14 +23,68 @@ import {
   PenTool,
   FileEdit,
   Bookmark,
+  FileText,
+  Trash2,
+  Clock,
 } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import { cn } from '@/lib/utils'
+import { getHistory, clearHistory, formatDate, formatSize } from '../utils/history'
+import { useContextMenu } from '../components/ContextMenu'
 
 function HomePage() {
   const t = useTranslations()
+  const [history, setHistory] = useState([])
+  const [contextFile, setContextFile] = useState(null)
+
+  useEffect(() => {
+    setHistory(getHistory())
+  }, [])
+
+  const handleClearHistory = () => {
+    clearHistory()
+    setHistory([])
+  }
+
+  const handleDeleteFile = (file) => {
+    const filtered = history.filter((h) => h.path !== file.path)
+    localStorage.setItem('pdf_master_history', JSON.stringify(filtered))
+    setHistory(filtered)
+  }
+
+  const handleOpenFile = async (file) => {
+    const result = await window.electronAPI.readFile(file.path)
+    if (result.success) {
+      window.dispatchEvent(new CustomEvent('file:open', { detail: {
+        path: file.path,
+        name: file.name,
+        data: result.data,
+      }}))
+    }
+  }
+
+  const handleContextMenu = (e, file) => {
+    e.preventDefault()
+    setContextFile(file)
+  }
+
+  const menuItems = [
+    {
+      label: t.common.open || '打开',
+      onClick: () => handleOpenFile(contextFile),
+    },
+    { divider: true },
+    {
+      label: t.common.delete || '删除',
+      danger: true,
+      onClick: () => handleDeleteFile(contextFile),
+    },
+  ]
+
+  const { isOpen: menuOpen, renderMenu } = useContextMenu(menuItems, [contextFile])
 
   const mainFeatures = [
     {
@@ -349,6 +403,71 @@ function HomePage() {
           </CardContent>
         </Card>
       </section>
+
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold tracking-tight">
+              {t.home.recentFiles || '最近文件'}
+            </h2>
+          </div>
+          {history.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={handleClearHistory}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" />
+              {t.home.clearHistory || '清除历史'}
+            </Button>
+          )}
+        </div>
+        {history.length > 0 ? (
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {history.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group cursor-pointer"
+                    onContextMenu={(e) => handleContextMenu(e, item)}
+                    onClick={() => handleOpenFile(item)}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium text-sm">{item.name}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatSize(item.size)}</span>
+                        <span>·</span>
+                        <span>{formatDate(item.accessedAt)}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteFile(item)
+                      }}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-8">
+              <div className="flex flex-col items-center justify-center text-muted-foreground">
+                <FileText className="h-10 w-10 mb-2 opacity-30" />
+                <p className="text-sm">{t.home.noRecentFiles || '暂无最近打开的文件'}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {renderMenu()}
     </div>
   )
 }

@@ -63,6 +63,7 @@ import PdfToWordPage from './pages/PdfToWordPage.jsx'
 import PdfToExcelPage from './pages/PdfToExcelPage.jsx'
 import AnnotatePage from './pages/AnnotatePage.jsx'
 import FormCreatePage from './pages/FormCreatePage.jsx'
+import BatchRenamePage from './pages/BatchRenamePage.jsx'
 
 function App() {
   const location = useLocation()
@@ -115,6 +116,7 @@ function App() {
         { path: '/annotate', label: t.common.annotate, icon: Highlighter, desc: t.nav.annotateDesc },
         { path: '/signature', label: t.common.signature, icon: PenTool, desc: t.nav.signatureDesc },
         { path: '/form-create', label: t.common.formCreate, icon: ListChecks, desc: t.nav.formCreateDesc },
+        { path: '/batch-rename', label: t.common.batchRename, icon: FileEdit, desc: t.nav.batchRenameDesc },
         { path: '/form', label: t.common.form, icon: FileEdit, desc: t.nav.formDesc },
         { path: '/bookmark', label: t.common.bookmark, icon: Bookmark, desc: t.nav.bookmarkDesc },
         { path: '/crop', label: t.common.crop, icon: Scissors, desc: t.nav.cropDesc },
@@ -286,6 +288,7 @@ function App() {
             <Route path="/pdf-to-excel" element={<PdfToExcelPage />} />
             <Route path="/annotate" element={<AnnotatePage />} />
             <Route path="/form-create" element={<FormCreatePage />} />
+            <Route path="/batch-rename" element={<BatchRenamePage />} />
             <Route path="/signature" element={<SignaturePage />} />
             <Route path="/form" element={<FormPage />} />
             <Route path="/bookmark" element={<BookmarkPage />} />
