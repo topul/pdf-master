@@ -16,8 +16,10 @@ import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 
 function PrintPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [pageCount, setPageCount] = useState(0)
@@ -76,7 +78,7 @@ function PrintPage() {
         setPageCount(info.pageCount)
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
+        setStatus({ type: 'error', message: (t.printPage.loadError || '加载 PDF 失败：{error}').replace('{error}', e.message) })
       }
     }
   }
@@ -113,12 +115,12 @@ function PrintPage() {
     if (!currentData) return
 
     setProcessing(true)
-    setStatus({ type: 'info', message: '正在准备打印...' })
+    setStatus({ type: 'info', message: t.printPage.preparingStatus || '正在准备打印...' })
 
     try {
       const indices = parsePrintRange()
       if (indices.length === 0) {
-        setStatus({ type: 'error', message: '没有可打印的页面，请检查打印范围' })
+        setStatus({ type: 'error', message: t.printPage.noPagesError || '没有可打印的页面，请检查打印范围' })
         setProcessing(false)
         return
       }
@@ -127,15 +129,16 @@ function PrintPage() {
       const selectedImages = indices.map((i) => images[i]).filter(Boolean)
 
       if (selectedImages.length === 0) {
-        setStatus({ type: 'error', message: '无法生成打印内容' })
+        setStatus({ type: 'error', message: t.printPage.generateContentError || '无法生成打印内容' })
         setProcessing(false)
         return
       }
 
+      const printTitle = (t.printPage.printTitle || '打印 - {name}').replace('{name}', file.name)
       const printContent = `
         <html>
           <head>
-            <title>打印 - ${file.name}</title>
+            <title>${printTitle}</title>
             <style>
               @page { margin: 0; }
               body { margin: 0; padding: 0; }
@@ -171,9 +174,9 @@ function PrintPage() {
       }
 
       printFrame.srcdoc = printContent
-      setStatus({ type: 'success', message: '打印对话框已打开，请在系统对话框中确认打印' })
+      setStatus({ type: 'success', message: t.printPage.printDialogOpened || '打印对话框已打开，请在系统对话框中确认打印' })
     } catch (error) {
-      setStatus({ type: 'error', message: `打印失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.printPage.printError || '打印失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -188,37 +191,37 @@ function PrintPage() {
   }
 
   const rangeOptions = [
-    { value: 'all', label: '全部页面', desc: `共 ${pageCount} 页` },
-    { value: 'custom', label: '自定义范围', desc: '指定页码或范围' },
+    { value: 'all', label: t.printPage.rangeAll || '全部页面', desc: (t.printPage.rangeAllDesc || '共 {count} 页').replace('{count}', pageCount) },
+    { value: 'custom', label: t.printPage.rangeCustom || '自定义范围', desc: t.printPage.rangeCustomDesc || '指定页码或范围' },
   ]
 
   return (
     <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Printer}
-        title="打印 PDF"
-        description="预览并打印 PDF 文件，支持选择打印范围"
+        title={t.printPage.title || '打印 PDF'}
+        description={t.printPage.description || '预览并打印 PDF 文件，支持选择打印范围'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.printPage.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.printPage.selectFile || '选择文件'}
         </Button>
         <Button size="sm" onClick={handlePrint} disabled={processing || !currentData}>
           {processing ? (
             <>
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              准备中...
+              {t.printPage.preparing || '准备中...'}
             </>
           ) : (
             <>
               <Printer className="mr-1.5 h-4 w-4" />
-              打印
+              {t.printPage.print || '打印'}
             </>
           )}
         </Button>
@@ -229,21 +232,21 @@ function PrintPage() {
       {!file ? (
         <EmptyState
           icon={Printer}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 后，可预览页面内容并调用系统打印对话框"
-          actionLabel="选择 PDF 文件"
+          title={t.printPage.emptyTitle || '还没有选择 PDF'}
+          description={t.printPage.emptyDescription || '选择一个 PDF 后，可预览页面内容并调用系统打印对话框'}
+          actionLabel={t.printPage.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '支持打印全部页面或自定义范围',
-            '范围格式：1-3, 5, 8-10',
-            '点击“打印”后将弹出系统打印对话框',
+            t.printPage.tip1 || '支持打印全部页面或自定义范围',
+            t.printPage.tip2 || '范围格式：1-3, 5, 8-10',
+            t.printPage.tip3 || '点击“打印”后将弹出系统打印对话框',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`共 ${pageCount} 页`}
+            meta={(t.printPage.metaPages || '共 {count} 页').replace('{count}', pageCount)}
             onRemove={!processing ? handleClear : undefined}
           />
 
@@ -251,8 +254,8 @@ function PrintPage() {
             {/* 打印选项 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">打印范围</h3>
-                <p className="text-xs text-muted-foreground">选择需要打印的页面</p>
+                <h3 className="text-sm font-medium">{t.printPage.rangeTitle || '打印范围'}</h3>
+                <p className="text-xs text-muted-foreground">{t.printPage.rangeDesc || '选择需要打印的页面'}</p>
               </div>
 
               <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -294,16 +297,16 @@ function PrintPage() {
 
                 {printRange === 'custom' && (
                   <div className="flex flex-col gap-2">
-                    <Label className="text-sm">页码范围</Label>
+                    <Label className="text-sm">{t.printPage.pageRangeLabel || '页码范围'}</Label>
                     <Input
                       type="text"
                       value={customRange}
                       onChange={(e) => setCustomRange(e.target.value)}
-                      placeholder="例如：1-3, 5, 8-10"
+                      placeholder={t.printPage.pageRangePlaceholder || '例如：1-3, 5, 8-10'}
                       disabled={processing}
                     />
                     <p className="text-xs text-muted-foreground">
-                      支持单页与范围，多个用英文逗号分隔
+                      {t.printPage.pageRangeHint || '支持单页与范围，多个用英文逗号分隔'}
                     </p>
                   </div>
                 )}
@@ -311,7 +314,7 @@ function PrintPage() {
                 <div className="mt-auto flex gap-2 rounded-md border bg-muted/30 p-3">
                   <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="text-xs text-muted-foreground">
-                    点击“打印”按钮后将调用系统打印对话框，可在对话框中选择打印机、纸张、份数等参数。
+                    {t.printPage.printHint || '点击“打印”按钮后将调用系统打印对话框，可在对话框中选择打印机、纸张、份数等参数。'}
                   </div>
                 </div>
               </div>
@@ -320,11 +323,11 @@ function PrintPage() {
             {/* 预览面板 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2.5">
-                <span className="text-sm font-medium">页面预览</span>
+                <span className="text-sm font-medium">{t.printPage.pagePreview || '页面预览'}</span>
                 {renderingPreview && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    渲染中...
+                    {t.printPage.rendering || '渲染中...'}
                   </span>
                 )}
               </div>
@@ -339,7 +342,7 @@ function PrintPage() {
                         <div className="aspect-[3/4] w-full">
                           <img
                             src={img.url}
-                            alt={`第 ${i + 1} 页`}
+                            alt={(t.printPage.pageAlt || '第 {n} 页').replace('{n}', i + 1)}
                             className="h-full w-full object-contain"
                           />
                         </div>
@@ -351,7 +354,7 @@ function PrintPage() {
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    {renderingPreview ? '渲染中...' : '无预览'}
+                    {renderingPreview ? (t.printPage.rendering || '渲染中...') : (t.printPage.noPreview || '无预览')}
                   </div>
                 )}
               </div>

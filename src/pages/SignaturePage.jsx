@@ -20,10 +20,12 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
 import { cn } from '@/lib/utils'
 
 function SignaturePage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [processing, setProcessing] = useState(false)
@@ -73,7 +75,7 @@ function SignaturePage() {
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({
       properties: ['openFile'],
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.signature.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (result.canceled) return
 
@@ -181,7 +183,7 @@ function SignaturePage() {
 
   const handleAddSignature = () => {
     if (!hasSignature) {
-      setStatus({ type: 'error', message: '请先在画板上签名' })
+      setStatus({ type: 'error', message: t.signature.needSignError || '请先在画板上签名' })
       return
     }
 
@@ -198,7 +200,7 @@ function SignaturePage() {
     }
     setSignatures((prev) => [...prev, newSig])
     clearCanvas()
-    setStatus({ type: 'success', message: '签名已添加，可在预览中调整位置' })
+    setStatus({ type: 'success', message: t.signature.addSuccess || '签名已添加，可在预览中调整位置' })
   }
 
   const handleRemoveSignature = (id) => {
@@ -215,12 +217,12 @@ function SignaturePage() {
     setSignatures((prev) =>
       prev.map((s) => (s.id === lastSig.id ? { ...s, x, y, pageIndex } : s))
     )
-    setStatus({ type: 'info', message: `签名位置已更新到第 ${pageIndex + 1} 页` })
+    setStatus({ type: 'info', message: (t.signature.positionUpdated || '签名位置已更新到第 {n} 页').replace('{n}', pageIndex + 1) })
   }
 
   const handleApply = async () => {
     if (!currentData || signatures.length === 0) {
-      setStatus({ type: 'error', message: '请添加至少一个签名' })
+      setStatus({ type: 'error', message: t.signature.needSignatureError || '请添加至少一个签名' })
       return
     }
 
@@ -228,9 +230,9 @@ function SignaturePage() {
     try {
       const result = await signPdf(currentData, signatures)
       setCurrentData(result)
-      setStatus({ type: 'success', message: '签名已应用到 PDF' })
+      setStatus({ type: 'success', message: t.signature.applySuccess || '签名已应用到 PDF' })
     } catch (error) {
-      setStatus({ type: 'error', message: `应用失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.signature.applyError || '应用失败：{error}').replace('{error}', error.message) })
     }
     setProcessing(false)
   }
@@ -239,14 +241,14 @@ function SignaturePage() {
     if (!currentData) return
     const saveResult = await window.electronAPI.saveFile({
       defaultPath: file?.name?.replace(/\.pdf$/i, '_signed.pdf') || 'signed.pdf',
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.signature.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (saveResult.canceled) return
     const writeResult = await window.electronAPI.writeFile(saveResult.filePath, currentData)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `已保存到：${saveResult.filePath}` })
+      setStatus({ type: 'success', message: (t.signature.saveSuccess || '已保存到：{path}').replace('{path}', saveResult.filePath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.signature.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -257,18 +259,18 @@ function SignaturePage() {
     <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={PenTool}
-        title="PDF 签名"
-        description="手写签名并添加到 PDF 指定位置，支持调整大小和颜色"
+        title={t.signature.title || 'PDF 签名'}
+        description={t.signature.pageDescription || '手写签名并添加到 PDF 指定位置，支持调整大小和颜色'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleSelectFile} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.signature.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.signature.selectFile || '选择文件'}
         </Button>
         <Button
           size="sm"
@@ -276,7 +278,7 @@ function SignaturePage() {
           disabled={!currentData || signatures.length === 0 || processing}
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          应用签名
+          {t.signature.applySignature || '应用签名'}
         </Button>
         <Button
           size="sm"
@@ -284,7 +286,7 @@ function SignaturePage() {
           disabled={!currentData || processing}
         >
           <Save className="mr-1.5 h-4 w-4" />
-          保存 PDF
+          {t.signature.savePdf || '保存 PDF'}
         </Button>
       </PageHeader>
 
@@ -293,22 +295,22 @@ function SignaturePage() {
       {!file ? (
         <EmptyState
           icon={PenTool}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 文件，添加手写签名"
-          actionLabel="选择 PDF 文件"
+          title={t.signature.emptyTitle || '还没有选择 PDF'}
+          description={t.signature.emptyDescription || '选择一个 PDF 文件，添加手写签名'}
+          actionLabel={t.signature.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '在画板上手写签名',
-            '调整签名颜色和粗细',
-            '点击预览页面放置签名',
-            '支持添加多个签名',
+            t.signature.tip1 || '在画板上手写签名',
+            t.signature.tip2 || '调整签名颜色和粗细',
+            t.signature.tip3 || '点击预览页面放置签名',
+            t.signature.tip4 || '支持添加多个签名',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`${pageImages.length} 页 · ${(file.size / 1024 / 1024).toFixed(2)} MB`}
+            meta={(t.signature.fileMeta || '{count} 页 · {size} MB').replace('{count}', pageImages.length).replace('{size}', (file.size / 1024 / 1024).toFixed(2))}
             onRemove={!processing ? handleSelectFile : undefined}
           />
 
@@ -316,7 +318,7 @@ function SignaturePage() {
             {/* 左侧：签名画板 */}
             <Card className="flex w-72 shrink-0 flex-col">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">签名画板</h3>
+                <h3 className="text-sm font-medium">{t.signature.canvasTitle || '签名画板'}</h3>
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <div className="relative flex-1 overflow-hidden rounded-lg border bg-white">
@@ -329,7 +331,7 @@ function SignaturePage() {
                   {!hasSignature && (
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-xs text-muted-foreground">
                       <PenTool className="mb-1.5 h-6 w-6 opacity-30" />
-                      <span>在此处签名</span>
+                      <span>{t.signature.canvasPlaceholder || '在此处签名'}</span>
                     </div>
                   )}
                 </div>
@@ -337,7 +339,7 @@ function SignaturePage() {
                 <div className="mt-3 space-y-3">
                   <div>
                     <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>颜色</span>
+                      <span>{t.signature.colorLabel || '颜色'}</span>
                     </div>
                     <div className="flex gap-1.5">
                       {colors.map((color) => (
@@ -359,7 +361,7 @@ function SignaturePage() {
 
                   <div>
                     <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>粗细</span>
+                      <span>{t.signature.widthLabel || '粗细'}</span>
                       <span className="font-medium">{signatureWidth}px</span>
                     </div>
                     <div className="flex gap-1">
@@ -390,7 +392,7 @@ function SignaturePage() {
                     className="flex-1"
                   >
                     <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-                    清除
+                    {t.signature.clearButton || '清除'}
                   </Button>
                   <Button
                     size="sm"
@@ -399,7 +401,7 @@ function SignaturePage() {
                     className="flex-1"
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
-                    添加
+                    {t.signature.addButton || '添加'}
                   </Button>
                 </div>
               </div>
@@ -408,16 +410,16 @@ function SignaturePage() {
             {/* 中间：签名列表 */}
             <Card className="flex w-64 shrink-0 flex-col">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">签名列表</h3>
+                <h3 className="text-sm font-medium">{t.signature.listTitle || '签名列表'}</h3>
                 <Badge variant="secondary" className="ml-2 text-[10px]">
-                  {signatures.length} 个
+                  {(t.signature.listCount || '{count} 个').replace('{count}', signatures.length)}
                 </Badge>
               </div>
               <ScrollArea className="flex-1 p-3">
                 {signatures.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-xs text-muted-foreground">
                     <PenTool className="mb-1.5 h-6 w-6 opacity-30" />
-                    <span>暂无签名</span>
+                    <span>{t.signature.emptySignatures || '暂无签名'}</span>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -429,16 +431,16 @@ function SignaturePage() {
                         <div className="h-8 w-8 overflow-hidden rounded border">
                           <img
                             src={sig.dataUrl}
-                            alt={`签名 ${idx + 1}`}
+                            alt={(t.signature.signatureAlt || '签名 {n}').replace('{n}', idx + 1)}
                             className="h-full w-full object-contain"
                           />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-xs font-medium">
-                            签名 {idx + 1}
+                            {(t.signature.signatureName || '签名 {n}').replace('{n}', idx + 1)}
                           </div>
                           <div className="text-[10px] text-muted-foreground">
-                            第 {sig.pageIndex + 1} 页
+                            {(t.signature.pageNum || '第 {n} 页').replace('{n}', sig.pageIndex + 1)}
                           </div>
                         </div>
                         <button
@@ -455,7 +457,7 @@ function SignaturePage() {
               <div className="border-t p-3 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Move className="h-3 w-3" />
-                  <span>点击预览页面调整签名位置</span>
+                  <span>{t.signature.clickHint || '点击预览页面调整签名位置'}</span>
                 </div>
               </div>
             </Card>
@@ -463,7 +465,7 @@ function SignaturePage() {
             {/* 右侧：PDF 预览 */}
             <Card className="flex flex-1 flex-col overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">PDF 预览</h3>
+                <h3 className="text-sm font-medium">{t.signature.previewTitle || 'PDF 预览'}</h3>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -493,12 +495,12 @@ function SignaturePage() {
                   <div className="flex h-full items-center justify-center">
                     <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
                       <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      <span>正在渲染预览...</span>
+                      <span>{t.signature.renderingPreview || '正在渲染预览...'}</span>
                     </div>
                   </div>
                 ) : pageImages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    加载预览失败
+                    {t.signature.loadPreviewError || '加载预览失败'}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -517,7 +519,7 @@ function SignaturePage() {
                       >
                         <img
                           src={img.url}
-                          alt={`第 ${idx + 1} 页`}
+                          alt={(t.signature.pageAlt || '第 {n} 页').replace('{n}', idx + 1)}
                           className="h-full w-full"
                         />
                         {signatures

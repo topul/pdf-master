@@ -22,6 +22,7 @@ import FileInfoCard from '@/components/FileInfoCard.jsx'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
@@ -30,6 +31,7 @@ function formatSize(bytes) {
 }
 
 function ExtractPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [tab, setTab] = useState('text')
   const [extracting, setExtracting] = useState(false)
@@ -54,7 +56,7 @@ function ExtractPage() {
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({
       properties: ['openFile'],
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.extract.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (result.canceled) return
 
@@ -79,7 +81,7 @@ function ExtractPage() {
   const handleExtract = async () => {
     if (!file) return
     setExtracting(true)
-    setStatus({ type: 'info', message: tab === 'text' ? '正在提取文字...' : '正在提取图片...' })
+    setStatus({ type: 'info', message: tab === 'text' ? (t.extract.extractingTextStatus || '正在提取文字...') : (t.extract.extractingImagesStatus || '正在提取图片...') })
 
     try {
       if (tab === 'text') {
@@ -87,7 +89,9 @@ function ExtractPage() {
         setTextResult(result)
         setStatus({
           type: 'success',
-          message: `提取完成！共 ${result.pageCount} 页，${result.fullText.length} 字`,
+          message: (t.extract.extractTextSuccess || '提取完成！共 {pages} 页，{chars} 字')
+            .replace('{pages}', result.pageCount)
+            .replace('{chars}', result.fullText.length),
         })
       } else {
         const imgs = await extractPdfImages(file.data)
@@ -105,17 +109,19 @@ function ExtractPage() {
         setImagePreviews(previews)
 
         if (imgs.length === 0) {
-          setStatus({ type: 'info', message: '未在 PDF 中找到嵌入图片' })
+          setStatus({ type: 'info', message: t.extract.noImagesInPdf || '未在 PDF 中找到嵌入图片' })
         } else {
           const jpgCount = imgs.filter((i) => i.format === 'jpeg').length
           setStatus({
             type: 'success',
-            message: `提取完成！共找到 ${imgs.length} 张图片（${jpgCount} 张 JPEG 可预览）`,
+            message: (t.extract.extractImagesSuccess || '提取完成！共找到 {count} 张图片（{jpgCount} 张 JPEG 可预览）')
+              .replace('{count}', imgs.length)
+              .replace('{jpgCount}', jpgCount),
           })
         }
       }
     } catch (error) {
-      setStatus({ type: 'error', message: `提取失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.extract.extractError || '提取失败：{error}').replace('{error}', error.message) })
     }
     setExtracting(false)
   }
@@ -131,16 +137,16 @@ function ExtractPage() {
     if (!textResult) return
     const saveResult = await window.electronAPI.saveFile({
       defaultPath: file.name.replace(/\.pdf$/i, '_text.txt'),
-      filters: [{ name: '文本文件', extensions: ['txt'] }],
+      filters: [{ name: t.extract.txtFilter || '文本文件', extensions: ['txt'] }],
     })
     if (saveResult.canceled) return
     const encoder = new TextEncoder()
     const data = Array.from(encoder.encode(textResult.fullText))
     const writeResult = await window.electronAPI.writeFile(saveResult.filePath, data)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `已保存到：${saveResult.filePath}` })
+      setStatus({ type: 'success', message: (t.extract.savedTo || '已保存到：{path}').replace('{path}', saveResult.filePath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.extract.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -158,9 +164,11 @@ function ExtractPage() {
 
     const writeResult = await window.electronAPI.writeFiles(files)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `已保存 ${files.length} 张图片到：${dirPath}` })
+      setStatus({ type: 'success', message: (t.extract.savedImagesTo || '已保存 {count} 张图片到：{path}')
+        .replace('{count}', files.length)
+        .replace('{path}', dirPath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.extract.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -181,29 +189,29 @@ function ExtractPage() {
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={FileImage}
-        title="提取内容"
-        description="从 PDF 中提取文字或图片，支持批量导出"
+        title={t.extract.title || '提取内容'}
+        description={t.extract.pageDescription || '从 PDF 中提取文字或图片，支持批量导出'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={extracting}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.extract.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={extracting}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.extract.selectFile || '选择文件'}
         </Button>
         <Button size="sm" onClick={handleExtract} disabled={!canExtract}>
           {extracting ? (
             <>
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              提取中...
+              {t.extract.extracting || '提取中...'}
             </>
           ) : (
             <>
               <Download className="mr-1.5 h-4 w-4" />
-              开始提取
+              {t.extract.startExtract || '开始提取'}
             </>
           )}
         </Button>
@@ -214,14 +222,14 @@ function ExtractPage() {
       {!file ? (
         <EmptyState
           icon={FileImage}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 文件，提取其中的文字或图片"
-          actionLabel="选择 PDF 文件"
+          title={t.extract.emptyTitle || '还没有选择 PDF'}
+          description={t.extract.emptyDescription || '选择一个 PDF 文件，提取其中的文字或图片'}
+          actionLabel={t.extract.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '提取文字：输出可编辑的纯文本内容',
-            '提取图片：导出 PDF 中嵌入的原始图片',
-            '所有操作均在本地完成，安全可靠',
+            t.extract.tip1 || '提取文字：输出可编辑的纯文本内容',
+            t.extract.tip2 || '提取图片：导出 PDF 中嵌入的原始图片',
+            t.extract.tip3 || '所有操作均在本地完成，安全可靠',
           ]}
         />
       ) : (
@@ -236,11 +244,11 @@ function ExtractPage() {
             <TabsList className="w-auto self-start">
               <TabsTrigger value="text" className="gap-1.5">
                 <AlignLeft className="h-4 w-4" />
-                提取文字
+                {t.extract.extractText || '提取文字'}
               </TabsTrigger>
               <TabsTrigger value="images" className="gap-1.5">
                 <ImageIcon className="h-4 w-4" />
-                提取图片
+                {t.extract.extractImages || '提取图片'}
               </TabsTrigger>
             </TabsList>
 
@@ -248,8 +256,10 @@ function ExtractPage() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
                   {hasText
-                    ? `共 ${textResult.pageCount} 页 · ${textResult.fullText.length} 字`
-                    : '提取后文字将显示在这里'}
+                    ? (t.extract.textStats || '共 {pages} 页 · {chars} 字')
+                        .replace('{pages}', textResult.pageCount)
+                        .replace('{chars}', textResult.fullText.length)
+                    : (t.extract.textPlaceholder || '提取后文字将显示在这里')}
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -261,12 +271,12 @@ function ExtractPage() {
                     {copied ? (
                       <>
                         <Check className="mr-1 h-3.5 w-3.5" />
-                        已复制
+                        {t.extract.copied || '已复制'}
                       </>
                     ) : (
                       <>
                         <Copy className="mr-1 h-3.5 w-3.5" />
-                        复制全文
+                        {t.extract.copyAll || '复制全文'}
                       </>
                     )}
                   </Button>
@@ -277,7 +287,7 @@ function ExtractPage() {
                     disabled={!hasText}
                   >
                     <Save className="mr-1 h-3.5 w-3.5" />
-                    保存为 TXT
+                    {t.extract.saveAsTxt || '保存为 TXT'}
                   </Button>
                 </div>
               </div>
@@ -290,7 +300,7 @@ function ExtractPage() {
                     </pre>
                   ) : (
                     <div className="flex h-full items-center justify-center py-20 text-sm text-muted-foreground">
-                      点击「开始提取」获取 PDF 文字内容
+                      {t.extract.clickToExtractText || '点击「开始提取」获取 PDF 文字内容'}
                     </div>
                   )}
                 </ScrollArea>
@@ -301,10 +311,10 @@ function ExtractPage() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
                   {hasImages
-                    ? `找到 ${images.length} 张图片`
+                    ? (t.extract.foundImages || '找到 {count} 张图片').replace('{count}', images.length)
                     : imagesExtracted
-                    ? '未找到嵌入图片'
-                    : '提取后图片将显示在这里'}
+                    ? (t.extract.noImagesFoundShort || '未找到嵌入图片')
+                    : (t.extract.imagesPlaceholder || '提取后图片将显示在这里')}
                 </div>
                 <Button
                   variant="outline"
@@ -313,7 +323,7 @@ function ExtractPage() {
                   disabled={!hasImages}
                 >
                   <FolderOpen className="mr-1 h-3.5 w-3.5" />
-                  全部导出
+                  {t.extract.exportAll || '全部导出'}
                 </Button>
               </div>
 
@@ -365,13 +375,13 @@ function ExtractPage() {
                   ) : imagesExtracted ? (
                     <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground">
                       <ImageIcon className="mb-2 h-12 w-12 opacity-30" />
-                      <span>未在 PDF 中找到嵌入图片</span>
-                      <span className="mt-1 text-xs">该 PDF 可能是纯文本或扫描件</span>
+                      <span>{t.extract.noImagesInPdf || '未在 PDF 中找到嵌入图片'}</span>
+                      <span className="mt-1 text-xs">{t.extract.maybeTextOrScan || '该 PDF 可能是纯文本或扫描件'}</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-sm text-muted-foreground">
                       <ImageIcon className="mb-2 h-12 w-12 opacity-30" />
-                      <span>点击「开始提取」获取 PDF 中的图片</span>
+                      <span>{t.extract.clickToExtractImages || '点击「开始提取」获取 PDF 中的图片'}</span>
                     </div>
                   )}
                 </div>

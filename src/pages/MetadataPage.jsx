@@ -16,6 +16,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
 
 function formatDate(dateStr) {
@@ -30,6 +31,7 @@ function formatDate(dateStr) {
 }
 
 function MetadataPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [metadata, setMetadata] = useState(null)
   const [processing, setProcessing] = useState(false)
@@ -55,7 +57,7 @@ function MetadataPage() {
     if (fileResult.success) {
       try {
         setProcessing(true)
-        setStatus({ type: 'info', message: '正在读取元数据...' })
+        setStatus({ type: 'info', message: t.metadataPage.readingStatus || '正在读取元数据...' })
 
         const meta = await getPdfMetadata(fileResult.data)
         const fileName = filePath.split(/[\\/]/).pop()
@@ -68,7 +70,7 @@ function MetadataPage() {
         setOutputData(null)
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
+        setStatus({ type: 'error', message: (t.metadataPage.loadError || '加载 PDF 失败：{error}').replace('{error}', e.message) })
       }
       setProcessing(false)
     }
@@ -82,7 +84,7 @@ function MetadataPage() {
   const handleApply = async () => {
     if (!file || !metadata) return
     setSaving(true)
-    setStatus({ type: 'info', message: '正在更新元数据...' })
+    setStatus({ type: 'info', message: t.metadataPage.updatingStatus || '正在更新元数据...' })
 
     try {
       const result = await setPdfMetadata(file.data, {
@@ -94,9 +96,9 @@ function MetadataPage() {
         producer: metadata.producer,
       })
       setOutputData(result)
-      setStatus({ type: 'success', message: '元数据已更新，点击保存导出文件' })
+      setStatus({ type: 'success', message: t.metadataPage.updateSuccess || '元数据已更新，点击保存导出文件' })
     } catch (error) {
-      setStatus({ type: 'error', message: `更新失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.metadataPage.updateError || '更新失败：{error}').replace('{error}', error.message) })
     }
     setSaving(false)
   }
@@ -111,9 +113,9 @@ function MetadataPage() {
 
     const writeResult = await window.electronAPI.writeFile(saveResult.filePath, outputData)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `保存成功！文件已保存到：${saveResult.filePath}` })
+      setStatus({ type: 'success', message: (t.metadataPage.saveSuccess || '保存成功！文件已保存到：{path}').replace('{path}', saveResult.filePath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.metadataPage.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -128,22 +130,22 @@ function MetadataPage() {
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={FileCog}
-          title="元数据编辑"
-          description="查看和修改 PDF 的标题、作者、关键词等元信息"
+          title={t.metadataPage.title || '元数据编辑'}
+          description={t.metadataPage.description || '查看和修改 PDF 的标题、作者、关键词等元信息'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={processing || saving}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.metadataPage.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing || saving}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.metadataPage.selectFile || '选择文件'}
         </Button>
         <Button size="sm" onClick={handleSave} disabled={processing || saving || !outputData}>
           <Save className="mr-1.5 h-4 w-4" />
-          保存
+          {t.metadataPage.save || '保存'}
         </Button>
       </PageHeader>
 
@@ -152,94 +154,94 @@ function MetadataPage() {
       {!file ? (
         <EmptyState
           icon={FileCog}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 文件，查看并编辑它的元数据信息"
-          actionLabel="选择 PDF 文件"
+          title={t.metadataPage.emptyTitle || '还没有选择 PDF'}
+          description={t.metadataPage.emptyDescription || '选择一个 PDF 文件，查看并编辑它的元数据信息'}
+          actionLabel={t.metadataPage.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '可编辑标题、作者、主题、关键词、创建者',
-            '查看页数、创建时间、修改时间等信息',
-            '修改后保存为新文件，不覆盖原文件',
+            t.metadataPage.tip1 || '可编辑标题、作者、主题、关键词、创建者',
+            t.metadataPage.tip2 || '查看页数、创建时间、修改时间等信息',
+            t.metadataPage.tip3 || '修改后保存为新文件，不覆盖原文件',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={metadata ? `${metadata.pageCount} 页` : '加载中...'}
+            meta={metadata ? (t.metadataPage.metaPages || '{count} 页').replace('{count}', metadata.pageCount) : (t.metadataPage.loading || '加载中...')}
             onRemove={!processing && !saving ? handleClear : undefined}
           />
 
           <Card className="flex flex-1 flex-col overflow-hidden">
             <div className="border-b px-4 py-2.5">
-              <h3 className="text-sm font-medium">元数据</h3>
-              <p className="text-xs text-muted-foreground">修改后点击「应用更改」保存到文件</p>
+              <h3 className="text-sm font-medium">{t.metadataPage.metaTitle || '元数据'}</h3>
+              <p className="text-xs text-muted-foreground">{t.metadataPage.metaDesc || '修改后点击「应用更改」保存到文件'}</p>
             </div>
 
             <div className="grid flex-1 grid-cols-1 gap-4 overflow-y-auto p-4 md:grid-cols-2">
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">标题 (Title)</Label>
+                <Label className="text-sm">{t.metadataPage.titleLabel || '标题 (Title)'}</Label>
                 <Input
                   value={metadata?.title || ''}
                   onChange={(e) => handleFieldChange('title', e.target.value)}
-                  placeholder="文档标题"
+                  placeholder={t.metadataPage.titlePlaceholder || '文档标题'}
                   disabled={processing || saving}
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">作者 (Author)</Label>
+                <Label className="text-sm">{t.metadataPage.authorLabel || '作者 (Author)'}</Label>
                 <Input
                   value={metadata?.author || ''}
                   onChange={(e) => handleFieldChange('author', e.target.value)}
-                  placeholder="作者姓名"
+                  placeholder={t.metadataPage.authorPlaceholder || '作者姓名'}
                   disabled={processing || saving}
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">主题 (Subject)</Label>
+                <Label className="text-sm">{t.metadataPage.subjectLabel || '主题 (Subject)'}</Label>
                 <Input
                   value={metadata?.subject || ''}
                   onChange={(e) => handleFieldChange('subject', e.target.value)}
-                  placeholder="文档主题"
+                  placeholder={t.metadataPage.subjectPlaceholder || '文档主题'}
                   disabled={processing || saving}
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">关键词 (Keywords)</Label>
+                <Label className="text-sm">{t.metadataPage.keywordsLabel || '关键词 (Keywords)'}</Label>
                 <Input
                   value={metadata?.keywords || ''}
                   onChange={(e) => handleFieldChange('keywords', e.target.value)}
-                  placeholder="用逗号分隔"
+                  placeholder={t.metadataPage.keywordsPlaceholder || '用逗号分隔'}
                   disabled={processing || saving}
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">创建者 (Creator)</Label>
+                <Label className="text-sm">{t.metadataPage.creatorLabel || '创建者 (Creator)'}</Label>
                 <Input
                   value={metadata?.creator || ''}
                   onChange={(e) => handleFieldChange('creator', e.target.value)}
-                  placeholder="创建文档的工具"
+                  placeholder={t.metadataPage.creatorPlaceholder || '创建文档的工具'}
                   disabled={processing || saving}
                 />
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">生成工具 (Producer)</Label>
+                <Label className="text-sm">{t.metadataPage.producerLabel || '生成工具 (Producer)'}</Label>
                 <Input
                   value={metadata?.producer || ''}
                   onChange={(e) => handleFieldChange('producer', e.target.value)}
-                  placeholder="生成 PDF 的工具"
+                  placeholder={t.metadataPage.producerPlaceholder || '生成 PDF 的工具'}
                   disabled={processing || saving}
                 />
-                <p className="text-[11px] text-muted-foreground">默认为 PDF Master，可自定义</p>
+                <p className="text-[11px] text-muted-foreground">{t.metadataPage.producerHint || '默认为 PDF Master，可自定义'}</p>
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">创建时间</Label>
+                <Label className="text-sm">{t.metadataPage.creationDateLabel || '创建时间'}</Label>
                 <Input
                   value={formatDate(metadata?.creationDate)}
                   disabled
@@ -248,7 +250,7 @@ function MetadataPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-sm">修改时间</Label>
+                <Label className="text-sm">{t.metadataPage.modificationDateLabel || '修改时间'}</Label>
                 <Input
                   value={formatDate(metadata?.modificationDate)}
                   disabled
@@ -266,12 +268,12 @@ function MetadataPage() {
                 {saving ? (
                   <>
                     <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    更新中...
+                    {t.metadataPage.updating || '更新中...'}
                   </>
                 ) : (
                   <>
                     <Edit3 className="mr-1.5 h-4 w-4" />
-                    应用更改
+                    {t.metadataPage.applyChanges || '应用更改'}
                   </>
                 )}
               </Button>

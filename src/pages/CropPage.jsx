@@ -19,9 +19,11 @@ import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import { cn } from '@/lib/utils'
 
 function CropPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [processing, setProcessing] = useState(false)
@@ -72,7 +74,7 @@ function CropPage() {
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({
       properties: ['openFile'],
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.crop.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (result.canceled) return
 
@@ -99,13 +101,13 @@ function CropPage() {
 
   const handleApply = async () => {
     if (!currentData) {
-      setStatus({ type: 'error', message: '请选择文件' })
+      setStatus({ type: 'error', message: t.crop.selectFileError || '请选择文件' })
       return
     }
 
     const allZero = marginTop === 0 && marginBottom === 0 && marginLeft === 0 && marginRight === 0
     if (allZero) {
-      setStatus({ type: 'error', message: '请设置裁剪边距' })
+      setStatus({ type: 'error', message: t.crop.marginRequiredError || '请设置裁剪边距' })
       return
     }
 
@@ -118,9 +120,9 @@ function CropPage() {
         right: marginRight,
       })
       setCurrentData(result)
-      setStatus({ type: 'success', message: '裁剪完成' })
+      setStatus({ type: 'success', message: t.crop.cropSuccess || '裁剪完成' })
     } catch (error) {
-      setStatus({ type: 'error', message: `裁剪失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.crop.cropError || '裁剪失败：{error}').replace('{error}', error.message) })
     }
     setProcessing(false)
   }
@@ -129,14 +131,14 @@ function CropPage() {
     if (!currentData) return
     const saveResult = await window.electronAPI.saveFile({
       defaultPath: file?.name?.replace(/\.pdf$/i, '_cropped.pdf') || 'cropped.pdf',
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.crop.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (saveResult.canceled) return
     const writeResult = await window.electronAPI.writeFile(saveResult.filePath, currentData)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `已保存到：${saveResult.filePath}` })
+      setStatus({ type: 'success', message: (t.crop.saveSuccess || '已保存到：{path}').replace('{path}', saveResult.filePath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.crop.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -153,18 +155,18 @@ function CropPage() {
     <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Scissors}
-        title="页面裁剪"
-        description="调整 PDF 页面边距，裁剪空白区域"
+        title={t.crop.title || '页面裁剪'}
+        description={t.crop.pageDescription || '调整 PDF 页面边距，裁剪空白区域'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleSelectFile} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.crop.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.crop.selectFile || '选择文件'}
         </Button>
         <Button
           size="sm"
@@ -172,7 +174,7 @@ function CropPage() {
           disabled={!currentData || processing}
         >
           <Scissors className="mr-1.5 h-4 w-4" />
-          应用裁剪
+          {t.crop.applyCrop || '应用裁剪'}
         </Button>
         <Button
           size="sm"
@@ -180,7 +182,7 @@ function CropPage() {
           disabled={!currentData || processing}
         >
           <Save className="mr-1.5 h-4 w-4" />
-          保存 PDF
+          {t.crop.savePdf || '保存 PDF'}
         </Button>
       </PageHeader>
 
@@ -189,21 +191,21 @@ function CropPage() {
       {!file ? (
         <EmptyState
           icon={Scissors}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 文件调整页面边距"
-          actionLabel="选择 PDF 文件"
+          title={t.crop.emptyTitle || '还没有选择 PDF'}
+          description={t.crop.emptyDescription || '选择一个 PDF 文件调整页面边距'}
+          actionLabel={t.crop.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '设置上下左右边距',
-            '实时预览裁剪效果',
-            '应用到所有页面',
+            t.crop.tip1 || '设置上下左右边距',
+            t.crop.tip2 || '实时预览裁剪效果',
+            t.crop.tip3 || '应用到所有页面',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`${pageImages.length} 页 · ${(file.size / 1024 / 1024).toFixed(2)} MB`}
+            meta={(t.crop.fileMeta || '{count} 页 · {size} MB').replace('{count}', pageImages.length).replace('{size}', (file.size / 1024 / 1024).toFixed(2))}
             onRemove={!processing ? handleSelectFile : undefined}
           />
 
@@ -211,12 +213,12 @@ function CropPage() {
             {/* 左侧：裁剪设置 */}
             <Card className="flex w-64 shrink-0 flex-col">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">裁剪设置</h3>
+                <h3 className="text-sm font-medium">{t.crop.settingsTitle || '裁剪设置'}</h3>
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">上边距 (pt)</Label>
+                    <Label className="text-xs text-muted-foreground">{t.crop.topMarginPt || '上边距 (pt)'}</Label>
                     <Input
                       type="number"
                       value={marginTop}
@@ -226,7 +228,7 @@ function CropPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">下边距 (pt)</Label>
+                    <Label className="text-xs text-muted-foreground">{t.crop.bottomMarginPt || '下边距 (pt)'}</Label>
                     <Input
                       type="number"
                       value={marginBottom}
@@ -236,7 +238,7 @@ function CropPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">左边距 (pt)</Label>
+                    <Label className="text-xs text-muted-foreground">{t.crop.leftMarginPt || '左边距 (pt)'}</Label>
                     <Input
                       type="number"
                       value={marginLeft}
@@ -246,7 +248,7 @@ function CropPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">右边距 (pt)</Label>
+                    <Label className="text-xs text-muted-foreground">{t.crop.rightMarginPt || '右边距 (pt)'}</Label>
                     <Input
                       type="number"
                       value={marginRight}
@@ -258,7 +260,7 @@ function CropPage() {
                 </div>
 
                 <div className="mt-3 rounded-md border border-dashed p-2 text-center text-xs text-muted-foreground">
-                  A4 页面：595 × 842 pt
+                  {t.crop.a4Hint || 'A4 页面：595 × 842 pt'}
                 </div>
 
                 <Button
@@ -267,7 +269,7 @@ function CropPage() {
                   onClick={handleReset}
                   disabled={processing}
                 >
-                  重置边距
+                  {t.crop.resetMargins || '重置边距'}
                 </Button>
               </div>
             </Card>
@@ -276,7 +278,7 @@ function CropPage() {
             <Card className="flex flex-1 flex-col overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium">预览</h3>
+                  <h3 className="text-sm font-medium">{t.crop.previewTitle || '预览'}</h3>
                   {pageCount > 0 && (
                     <Badge variant="secondary" className="text-[10px]">
                       {selectedPage + 1} / {pageCount}
@@ -314,7 +316,7 @@ function CropPage() {
                   </div>
                 ) : !currentPageImg ? (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    加载预览失败
+                    {t.crop.loadPreviewError || '加载预览失败'}
                   </div>
                 ) : (
                   <div className="flex justify-center">
@@ -328,7 +330,7 @@ function CropPage() {
                     >
                       <img
                         src={currentPageImg.url}
-                        alt={`第 ${selectedPage + 1} 页`}
+                        alt={(t.crop.pageAlt || '第 {n} 页').replace('{n}', selectedPage + 1)}
                         className="rounded border bg-white"
                         style={{
                           width: '100%',
@@ -360,7 +362,7 @@ function CropPage() {
                         />
                       )}
                       <div className="absolute bottom-1 right-1 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white">
-                        第 {selectedPage + 1} 页
+                        {(t.crop.pageAlt || '第 {n} 页').replace('{n}', selectedPage + 1)}
                       </div>
                     </div>
                   </div>

@@ -16,9 +16,11 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
 
 function WatermarkPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [pageCount, setPageCount] = useState(0)
@@ -34,7 +36,7 @@ function WatermarkPage() {
     }
   })
 
-  const [text, setText] = useState('机密文件')
+  const [text, setText] = useState(t.watermarkPage.defaultText || '机密文件')
   const [fontSize, setFontSize] = useState(60)
   const [opacity, setOpacity] = useState(0.2)
   const [color, setColor] = useState('#cccccc')
@@ -93,7 +95,7 @@ function WatermarkPage() {
         setPageCount(info.pageCount)
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
+        setStatus({ type: 'error', message: (t.watermarkPage.loadError || '加载 PDF 失败：{error}').replace('{error}', e.message) })
       }
     }
   }
@@ -101,12 +103,12 @@ function WatermarkPage() {
   const handleApplyWatermark = async () => {
     if (!currentData) return
     if (!text.trim()) {
-      setStatus({ type: 'error', message: '请输入水印文字' })
+      setStatus({ type: 'error', message: t.watermarkPage.textRequired || '请输入水印文字' })
       return
     }
 
     setProcessing(true)
-    setStatus({ type: 'info', message: '正在添加水印...' })
+    setStatus({ type: 'info', message: t.watermarkPage.addingStatus || '正在添加水印...' })
 
     try {
       const result = await addWatermark(currentData, {
@@ -118,9 +120,9 @@ function WatermarkPage() {
         position,
       })
       setCurrentData(result)
-      setStatus({ type: 'success', message: '水印已添加，可在预览中查看效果' })
+      setStatus({ type: 'success', message: t.watermarkPage.addSuccess || '水印已添加，可在预览中查看效果' })
     } catch (error) {
-      setStatus({ type: 'error', message: `添加失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.watermarkPage.addError || '添加失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -139,10 +141,10 @@ function WatermarkPage() {
     if (writeResult.success) {
       setStatus({
         type: 'success',
-        message: `保存成功！文件已保存到：${saveResult.filePath}`,
+        message: (t.watermarkPage.saveSuccess || '保存成功！文件已保存到：{path}').replace('{path}', saveResult.filePath),
       })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.watermarkPage.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -155,31 +157,31 @@ function WatermarkPage() {
   }
 
   const positionOptions = [
-    { value: 'top-left', label: '左上' },
-    { value: 'center', label: '居中' },
-    { value: 'bottom-right', label: '右下' },
+    { value: 'top-left', label: t.watermarkPage.posTopLeft || '左上' },
+    { value: 'center', label: t.watermarkPage.posCenter || '居中' },
+    { value: 'bottom-right', label: t.watermarkPage.posBottomRight || '右下' },
   ]
 
   return (
     <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Droplet}
-        title="添加水印"
-        description="给 PDF 的所有页面添加自定义文字水印"
+        title={t.watermarkPage.title || '添加水印'}
+        description={t.watermarkPage.description || '给 PDF 的所有页面添加自定义文字水印'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.watermarkPage.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.watermarkPage.selectFile || '选择文件'}
         </Button>
         <Button size="sm" onClick={handleSave} disabled={processing || !currentData}>
           <Save className="mr-1.5 h-4 w-4" />
-          保存
+          {t.watermarkPage.save || '保存'}
         </Button>
       </PageHeader>
 
@@ -188,21 +190,21 @@ function WatermarkPage() {
       {!file ? (
         <EmptyState
           icon={Droplet}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 后，可以批量给所有页面添加自定义文字水印"
-          actionLabel="选择 PDF 文件"
+          title={t.watermarkPage.emptyTitle || '还没有选择 PDF'}
+          description={t.watermarkPage.emptyDescription || '选择一个 PDF 后，可以批量给所有页面添加自定义文字水印'}
+          actionLabel={t.watermarkPage.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '支持自定义文字、字号、颜色、透明度',
-            '可设置旋转角度与放置位置',
-            '水印会应用到所有页面',
+            t.watermarkPage.tip1 || '支持自定义文字、字号、颜色、透明度',
+            t.watermarkPage.tip2 || '可设置旋转角度与放置位置',
+            t.watermarkPage.tip3 || '水印会应用到所有页面',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`共 ${pageCount} 页`}
+            meta={(t.watermarkPage.meta || '共 {total} 页').replace('{total}', pageCount)}
             onRemove={!processing ? handleClear : undefined}
           />
 
@@ -210,25 +212,25 @@ function WatermarkPage() {
             {/* 控制面板 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">水印设置</h3>
-                <p className="text-xs text-muted-foreground">实时调整参数并应用</p>
+                <h3 className="text-sm font-medium">{t.watermarkPage.settingsTitle || '水印设置'}</h3>
+                <p className="text-xs text-muted-foreground">{t.watermarkPage.settingsDesc || '实时调整参数并应用'}</p>
               </div>
 
               <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm">水印文字</Label>
+                  <Label className="text-sm">{t.watermarkPage.watermarkText || '水印文字'}</Label>
                   <Input
                     type="text"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="例如：机密文件"
+                    placeholder={t.watermarkPage.watermarkPlaceholder || '例如：机密文件'}
                     disabled={processing}
                   />
                 </div>
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm">字号</Label>
+                    <Label className="text-sm">{t.watermarkPage.fontSize || '字号'}</Label>
                     <span className="text-xs text-muted-foreground">{fontSize}</span>
                   </div>
                   <input
@@ -244,7 +246,7 @@ function WatermarkPage() {
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm">透明度</Label>
+                    <Label className="text-sm">{t.watermarkPage.opacity || '透明度'}</Label>
                     <span className="text-xs text-muted-foreground">
                       {Math.round(opacity * 100)}%
                     </span>
@@ -263,7 +265,7 @@ function WatermarkPage() {
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm">旋转角度</Label>
+                    <Label className="text-sm">{t.watermarkPage.rotation || '旋转角度'}</Label>
                     <span className="text-xs text-muted-foreground">{rotation}°</span>
                   </div>
                   <input
@@ -278,7 +280,7 @@ function WatermarkPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm">颜色</Label>
+                  <Label className="text-sm">{t.watermarkPage.color || '颜色'}</Label>
                   <div className="flex h-9 items-center gap-2 rounded-md border px-2">
                     <input
                       type="color"
@@ -292,7 +294,7 @@ function WatermarkPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm">位置</Label>
+                  <Label className="text-sm">{t.watermarkPage.position || '位置'}</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {positionOptions.map((opt) => (
                       <button
@@ -320,12 +322,12 @@ function WatermarkPage() {
                   {processing ? (
                     <>
                       <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      添加中...
+                      {t.watermarkPage.adding || '添加中...'}
                     </>
                   ) : (
                     <>
                       <Sparkles className="mr-1.5 h-4 w-4" />
-                      应用水印
+                      {t.watermarkPage.applyWatermark || '应用水印'}
                     </>
                   )}
                 </Button>
@@ -335,11 +337,11 @@ function WatermarkPage() {
             {/* 预览面板 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2.5">
-                <span className="text-sm font-medium">预览（第一页）</span>
+                <span className="text-sm font-medium">{t.watermarkPage.previewLabel || '预览（第一页）'}</span>
                 {renderingPreview && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    渲染中...
+                    {t.watermarkPage.rendering || '渲染中...'}
                   </span>
                 )}
               </div>
@@ -347,12 +349,12 @@ function WatermarkPage() {
                 {pageImages[0] ? (
                   <img
                     src={pageImages[0].url}
-                    alt="预览"
+                    alt={t.watermarkPage.previewLabel || '预览'}
                     className="max-h-full max-w-full shadow-md"
                   />
                 ) : (
                   <span className="text-sm text-muted-foreground">
-                    {renderingPreview ? '渲染中...' : '无预览'}
+                    {renderingPreview ? (t.watermarkPage.rendering || '渲染中...') : (t.watermarkPage.noPreview || '无预览')}
                   </span>
                 )}
               </div>

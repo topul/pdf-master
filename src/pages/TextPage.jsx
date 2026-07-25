@@ -21,9 +21,11 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
 
 function TextPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [pageCount, setPageCount] = useState(0)
@@ -40,7 +42,7 @@ function TextPage() {
     }
   })
 
-  const [text, setText] = useState('在此输入文字')
+  const [text, setText] = useState(t.textPage.defaultText || '在此输入文字')
   const [fontSize, setFontSize] = useState(16)
   const [color, setColor] = useState('#000000')
   const [clickPos, setClickPos] = useState(null)
@@ -100,7 +102,7 @@ function TextPage() {
         setClickPos(null)
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
+        setStatus({ type: 'error', message: (t.textPage.loadError || '加载 PDF 失败：{error}').replace('{error}', e.message) })
       }
     }
   }
@@ -124,16 +126,16 @@ function TextPage() {
   const handleAddText = async () => {
     if (!currentData) return
     if (!text.trim()) {
-      setStatus({ type: 'error', message: '请输入文字内容' })
+      setStatus({ type: 'error', message: t.textPage.textRequired || '请输入文字内容' })
       return
     }
     if (!clickPos) {
-      setStatus({ type: 'error', message: '请在页面预览中点击选择文字位置' })
+      setStatus({ type: 'error', message: t.textPage.positionRequired || '请在页面预览中点击选择文字位置' })
       return
     }
 
     setProcessing(true)
-    setStatus({ type: 'info', message: '正在添加文字...' })
+    setStatus({ type: 'info', message: t.textPage.addingStatus || '正在添加文字...' })
 
     try {
       const result = await addText(currentData, {
@@ -146,9 +148,9 @@ function TextPage() {
       })
       setCurrentData(result)
       setClickPos(null)
-      setStatus({ type: 'success', message: '文字已添加，可在预览中查看效果' })
+      setStatus({ type: 'success', message: t.textPage.addSuccess || '文字已添加，可在预览中查看效果' })
     } catch (error) {
-      setStatus({ type: 'error', message: `添加失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.textPage.addError || '添加失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -167,10 +169,10 @@ function TextPage() {
     if (writeResult.success) {
       setStatus({
         type: 'success',
-        message: `保存成功！文件已保存到：${saveResult.filePath}`,
+        message: (t.textPage.saveSuccess || '保存成功！文件已保存到：{path}').replace('{path}', saveResult.filePath),
       })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.textPage.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -194,18 +196,18 @@ function TextPage() {
     <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Type}
-        title="添加文字"
-        description="在 PDF 页面指定位置添加文字内容，点击预览图选择位置"
+        title={t.textPage.title || '添加文字'}
+        description={t.textPage.description || '在 PDF 页面指定位置添加文字内容，点击预览图选择位置'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.textPage.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.textPage.selectFile || '选择文件'}
         </Button>
         <Button
           size="sm"
@@ -213,7 +215,7 @@ function TextPage() {
           disabled={processing || !currentData}
         >
           <Save className="mr-1.5 h-4 w-4" />
-          保存
+          {t.textPage.save || '保存'}
         </Button>
       </PageHeader>
 
@@ -222,21 +224,23 @@ function TextPage() {
       {!file ? (
         <EmptyState
           icon={Type}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 后，可以点击页面预览的任意位置叠加文字内容"
-          actionLabel="选择 PDF 文件"
+          title={t.textPage.emptyTitle || '还没有选择 PDF'}
+          description={t.textPage.emptyDescription || '选择一个 PDF 后，可以点击页面预览的任意位置叠加文字内容'}
+          actionLabel={t.textPage.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            'PDF 格式不支持修改已有文字',
-            '本功能在指定位置叠加新文字',
-            '添加后可继续点击其他位置添加更多文字',
+            t.textPage.tip1 || 'PDF 格式不支持修改已有文字',
+            t.textPage.tip2 || '本功能在指定位置叠加新文字',
+            t.textPage.tip3 || '添加后可继续点击其他位置添加更多文字',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`共 ${pageCount} 页 · 当前第 ${selectedPageIndex + 1} 页`}
+            meta={(t.textPage.meta || '共 {total} 页 · 当前第 {current} 页')
+              .replace('{total}', pageCount)
+              .replace('{current}', selectedPageIndex + 1)}
             onRemove={!processing ? handleClear : undefined}
           />
 
@@ -244,7 +248,7 @@ function TextPage() {
             {/* 预览面板 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2.5">
-                <span className="text-sm font-medium">页面预览</span>
+                <span className="text-sm font-medium">{t.textPage.pagePreview || '页面预览'}</span>
                 <div className="flex items-center gap-1.5">
                   <Button
                     variant="ghost"
@@ -252,7 +256,7 @@ function TextPage() {
                     className="h-7 w-7"
                     onClick={() => goToPage(-1)}
                     disabled={selectedPageIndex === 0 || processing}
-                    title="上一页"
+                    title={t.textPage.prevPage || '上一页'}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -265,7 +269,7 @@ function TextPage() {
                     className="h-7 w-7"
                     onClick={() => goToPage(1)}
                     disabled={selectedPageIndex === pageCount - 1 || processing}
-                    title="下一页"
+                    title={t.textPage.nextPage || '下一页'}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -280,13 +284,13 @@ function TextPage() {
                 {renderingPreview ? (
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <span className="text-sm">渲染预览中...</span>
+                    <span className="text-sm">{t.textPage.renderingPreview || '渲染预览中...'}</span>
                   </div>
                 ) : pageImages[selectedPageIndex] ? (
                   <div className="relative inline-block shadow-md">
                     <img
                       src={pageImages[selectedPageIndex].url}
-                      alt={`第 ${selectedPageIndex + 1} 页`}
+                      alt={(t.textPage.pageAlt || '第 {n} 页').replace('{n}', selectedPageIndex + 1)}
                       className="block max-h-full max-w-full"
                     />
                     {clickPos && (
@@ -301,7 +305,7 @@ function TextPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">无预览</div>
+                  <div className="text-sm text-muted-foreground">{t.textPage.noPreview || '无预览'}</div>
                 )}
               </div>
 
@@ -309,8 +313,10 @@ function TextPage() {
                 <MousePointerClick className="h-3.5 w-3.5" />
                 <span>
                   {clickPos
-                    ? `已选择位置：(${Math.round(clickPos.x)}, ${Math.round(clickPos.y)})`
-                    : '点击预览图任意位置以选择文字添加位置'}
+                    ? (t.textPage.selectedPosition || '已选择位置：({x}, {y})')
+                        .replace('{x}', Math.round(clickPos.x))
+                        .replace('{y}', Math.round(clickPos.y))
+                    : t.textPage.positionHint || '点击预览图任意位置以选择文字添加位置'}
                 </span>
               </div>
             </Card>
@@ -318,25 +324,25 @@ function TextPage() {
             {/* 控制面板 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">文字设置</h3>
-                <p className="text-xs text-muted-foreground">配置文字内容与样式</p>
+                <h3 className="text-sm font-medium">{t.textPage.settingsTitle || '文字设置'}</h3>
+                <p className="text-xs text-muted-foreground">{t.textPage.settingsDesc || '配置文字内容与样式'}</p>
               </div>
 
               <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm">文字内容</Label>
+                  <Label className="text-sm">{t.textPage.textContent || '文字内容'}</Label>
                   <Textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     rows={3}
-                    placeholder="在此输入要添加的文字"
+                    placeholder={t.textPage.textPlaceholder || '在此输入要添加的文字'}
                     disabled={processing}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-2">
-                    <Label className="text-sm">字号</Label>
+                    <Label className="text-sm">{t.textPage.fontSize || '字号'}</Label>
                     <Input
                       type="number"
                       min="8"
@@ -347,7 +353,7 @@ function TextPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Label className="text-sm">颜色</Label>
+                    <Label className="text-sm">{t.textPage.color || '颜色'}</Label>
                     <div className="flex h-9 items-center gap-2 rounded-md border px-2">
                       <input
                         type="color"
@@ -369,12 +375,12 @@ function TextPage() {
                   {processing ? (
                     <>
                       <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      添加中...
+                      {t.textPage.adding || '添加中...'}
                     </>
                   ) : (
                     <>
                       <Plus className="mr-1.5 h-4 w-4" />
-                      添加文字
+                      {t.textPage.addText || '添加文字'}
                     </>
                   )}
                 </Button>
@@ -382,7 +388,7 @@ function TextPage() {
                 <div className="mt-2 flex gap-2 rounded-md border bg-muted/30 p-3">
                   <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="text-xs text-muted-foreground">
-                    <p>字号以 PDF 坐标系单位为准，与显示像素有差异。建议先小范围测试再批量添加。</p>
+                    <p>{t.textPage.hint || '字号以 PDF 坐标系单位为准，与显示像素有差异。建议先小范围测试再批量添加。'}</p>
                   </div>
                 </div>
               </div>

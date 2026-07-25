@@ -19,10 +19,12 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
 import { cn } from '@/lib/utils'
 
 function BookmarkPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [processing, setProcessing] = useState(false)
@@ -47,7 +49,7 @@ function BookmarkPage() {
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({
       properties: ['openFile'],
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.bookmark.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (result.canceled) return
 
@@ -79,25 +81,25 @@ function BookmarkPage() {
       const bms = await getBookmarks(currentData)
       setBookmarks(bms)
       if (bms.length === 0) {
-        setStatus({ type: 'info', message: '该 PDF 暂无书签' })
+        setStatus({ type: 'info', message: t.bookmark.noBookmarksInfo || '该 PDF 暂无书签' })
       } else {
-        setStatus({ type: 'success', message: `找到 ${bms.length} 个书签` })
+        setStatus({ type: 'success', message: (t.bookmark.foundBookmarks || '找到 {count} 个书签').replace('{count}', bms.length) })
       }
     } catch (error) {
-      setStatus({ type: 'error', message: `加载失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.bookmark.loadError || '加载失败：{error}').replace('{error}', error.message) })
     }
     setLoading(false)
   }
 
   const handleAddBookmark = async () => {
     if (!newTitle.trim() || !newPage || !currentData) {
-      setStatus({ type: 'error', message: '请填写标题和页码' })
+      setStatus({ type: 'error', message: t.bookmark.titleRequiredError || '请填写标题和页码' })
       return
     }
 
     const pageNum = parseInt(newPage, 10)
     if (isNaN(pageNum) || pageNum < 1) {
-      setStatus({ type: 'error', message: '页码必须大于 0' })
+      setStatus({ type: 'error', message: t.bookmark.pageInvalidError || '页码必须大于 0' })
       return
     }
 
@@ -111,16 +113,16 @@ function BookmarkPage() {
       setNewTitle('')
       setNewPage('1')
       await loadBookmarks()
-      setStatus({ type: 'success', message: '书签已添加' })
+      setStatus({ type: 'success', message: t.bookmark.addSuccess || '书签已添加' })
     } catch (error) {
-      setStatus({ type: 'error', message: `添加失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.bookmark.addError || '添加失败：{error}').replace('{error}', error.message) })
     }
     setProcessing(false)
   }
 
   const handleEditBookmark = async (id) => {
     if (!editTitle.trim()) {
-      setStatus({ type: 'error', message: '请填写标题' })
+      setStatus({ type: 'error', message: t.bookmark.titleOnlyRequiredError || '请填写标题' })
       return
     }
 
@@ -131,9 +133,9 @@ function BookmarkPage() {
       setEditingId(null)
       setEditTitle('')
       await loadBookmarks()
-      setStatus({ type: 'success', message: '书签已更新' })
+      setStatus({ type: 'success', message: t.bookmark.updateSuccess || '书签已更新' })
     } catch (error) {
-      setStatus({ type: 'error', message: `更新失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.bookmark.updateError || '更新失败：{error}').replace('{error}', error.message) })
     }
     setProcessing(false)
   }
@@ -144,9 +146,9 @@ function BookmarkPage() {
       const result = await removeBookmark(currentData, id)
       setCurrentData(result)
       await loadBookmarks()
-      setStatus({ type: 'success', message: '书签已删除' })
+      setStatus({ type: 'success', message: t.bookmark.deleteSuccess || '书签已删除' })
     } catch (error) {
-      setStatus({ type: 'error', message: `删除失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.bookmark.deleteError || '删除失败：{error}').replace('{error}', error.message) })
     }
     setProcessing(false)
   }
@@ -155,14 +157,14 @@ function BookmarkPage() {
     if (!currentData) return
     const saveResult = await window.electronAPI.saveFile({
       defaultPath: file?.name?.replace(/\.pdf$/i, '_bookmarks.pdf') || 'bookmarks.pdf',
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.bookmark.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (saveResult.canceled) return
     const writeResult = await window.electronAPI.writeFile(saveResult.filePath, currentData)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `已保存到：${saveResult.filePath}` })
+      setStatus({ type: 'success', message: (t.bookmark.saveSuccess || '已保存到：{path}').replace('{path}', saveResult.filePath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.bookmark.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -170,18 +172,18 @@ function BookmarkPage() {
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Bookmark}
-        title="书签管理"
-        description="查看、添加、编辑和删除 PDF 书签"
+        title={t.bookmark.title || '书签管理'}
+        description={t.bookmark.pageDescription || '查看、添加、编辑和删除 PDF 书签'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleSelectFile} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.bookmark.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.bookmark.selectFile || '选择文件'}
         </Button>
         <Button
           size="sm"
@@ -189,7 +191,7 @@ function BookmarkPage() {
           disabled={!currentData || processing}
         >
           <Save className="mr-1.5 h-4 w-4" />
-          保存 PDF
+          {t.bookmark.savePdf || '保存 PDF'}
         </Button>
       </PageHeader>
 
@@ -198,14 +200,14 @@ function BookmarkPage() {
       {!file ? (
         <EmptyState
           icon={Bookmark}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 文件管理书签"
-          actionLabel="选择 PDF 文件"
+          title={t.bookmark.emptyTitle || '还没有选择 PDF'}
+          description={t.bookmark.emptyDescription || '选择一个 PDF 文件管理书签'}
+          actionLabel={t.bookmark.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '查看现有书签',
-            '添加新书签',
-            '编辑和删除书签',
+            t.bookmark.tip1 || '查看现有书签',
+            t.bookmark.tip2 || '添加新书签',
+            t.bookmark.tip3 || '编辑和删除书签',
           ]}
         />
       ) : (
@@ -220,9 +222,9 @@ function BookmarkPage() {
             {/* 左侧：书签列表 */}
             <Card className="flex flex-1 flex-col overflow-hidden">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">书签列表</h3>
+                <h3 className="text-sm font-medium">{t.bookmark.listTitle || '书签列表'}</h3>
                 <Badge variant="secondary" className="ml-2 text-[10px]">
-                  {bookmarks.length} 个
+                  {(t.bookmark.listCount || '{count} 个').replace('{count}', bookmarks.length)}
                 </Badge>
               </div>
               <ScrollArea className="flex-1 p-3">
@@ -233,7 +235,7 @@ function BookmarkPage() {
                 ) : bookmarks.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center py-12 text-sm text-muted-foreground">
                     <Bookmark className="mb-3 h-12 w-12 opacity-30" />
-                    <span>暂无书签</span>
+                    <span>{t.bookmark.noBookmarks || '暂无书签'}</span>
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -267,7 +269,7 @@ function BookmarkPage() {
                             </div>
                           )}
                           <div className="text-[10px] text-muted-foreground">
-                            第 {bm.pageIndex + 1} 页
+                            {(t.bookmark.pageNum || '第 {n} 页').replace('{n}', bm.pageIndex + 1)}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -309,21 +311,21 @@ function BookmarkPage() {
             {/* 右侧：添加书签 */}
             <Card className="flex w-64 shrink-0 flex-col">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">添加书签</h3>
+                <h3 className="text-sm font-medium">{t.bookmark.addTitle || '添加书签'}</h3>
               </div>
               <div className="flex flex-1 flex-col p-4">
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">标题</Label>
+                    <Label className="text-xs text-muted-foreground">{t.bookmark.titleLabel || '标题'}</Label>
                     <Input
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="书签名称"
+                      placeholder={t.bookmark.titlePlaceholder || '书签名称'}
                       className="mt-1 h-9 text-sm"
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">页码</Label>
+                    <Label className="text-xs text-muted-foreground">{t.bookmark.pageLabel || '页码'}</Label>
                     <Input
                       type="number"
                       value={newPage}
@@ -341,14 +343,14 @@ function BookmarkPage() {
                   disabled={!newTitle.trim() || !newPage || processing}
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  添加书签
+                  {t.bookmark.addBookmark || '添加书签'}
                 </Button>
 
                 <div className="mt-4 text-xs text-muted-foreground space-y-1">
-                  <div className="font-medium">操作提示</div>
-                  <div>• 点击书签编辑标题</div>
-                  <div>• 按 Enter 保存编辑</div>
-                  <div>• 按 Escape 取消编辑</div>
+                  <div className="font-medium">{t.bookmark.tipsTitle || '操作提示'}</div>
+                  <div>{t.bookmark.tipEdit || '• 点击书签编辑标题'}</div>
+                  <div>{t.bookmark.tipEnter || '• 按 Enter 保存编辑'}</div>
+                  <div>{t.bookmark.tipEscape || '• 按 Escape 取消编辑'}</div>
                 </div>
               </div>
             </Card>

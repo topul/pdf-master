@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
@@ -33,12 +34,13 @@ function formatSize(bytes) {
 }
 
 const OPERATIONS = [
-  { id: 'compress', label: '批量压缩', icon: FileDown, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { id: 'encrypt', label: '批量加密', icon: Lock, color: 'text-red-500', bg: 'bg-red-500/10' },
-  { id: 'extractText', label: '批量提取文字', icon: AlignLeft, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { id: 'compress', labelKey: 'batchCompress', icon: FileDown, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { id: 'encrypt', labelKey: 'batchEncrypt', icon: Lock, color: 'text-red-500', bg: 'bg-red-500/10' },
+  { id: 'extractText', labelKey: 'batchExtractText', icon: AlignLeft, color: 'text-blue-500', bg: 'bg-blue-500/10' },
 ]
 
 function BatchPage() {
+  const t = useTranslations()
   const [files, setFiles] = useState([])
   const [operation, setOperation] = useState('compress')
   const [status, setStatus] = useState(null)
@@ -111,7 +113,7 @@ function BatchPage() {
   const handleAddFiles = async () => {
     const result = await window.electronAPI.openFiles({
       properties: ['openFile', 'multiSelections'],
-      filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      filters: [{ name: t.batch.pdfFilter || 'PDF 文件', extensions: ['pdf'] }],
     })
     if (result.canceled) return
 
@@ -130,7 +132,7 @@ function BatchPage() {
     }
     if (newFiles.length > 0) {
       setFiles((prev) => [...prev, ...newFiles])
-      setStatus({ type: 'info', message: `已添加 ${newFiles.length} 个文件` })
+      setStatus({ type: 'info', message: (t.batch.addedCount || '已添加 {count} 个文件').replace('{count}', newFiles.length) })
     }
   }
 
@@ -152,13 +154,13 @@ function BatchPage() {
   const handleStart = async () => {
     if (files.length === 0 || processing) return
     if (operation === 'encrypt' && !encryptPassword) {
-      setStatus({ type: 'error', message: '请输入加密密码' })
+      setStatus({ type: 'error', message: t.batch.encryptPasswordRequired || '请输入加密密码' })
       return
     }
 
     setProcessing(true)
     abortRef.current = false
-    setStatus({ type: 'info', message: `开始处理... 0 / ${files.length}` })
+    setStatus({ type: 'info', message: (t.batch.startStatus || '开始处理... 0 / {total}').replace('{total}', files.length) })
 
     const newResults = {}
     let successCount = 0
@@ -170,7 +172,7 @@ function BatchPage() {
       const file = files[i]
       newResults[i] = { status: 'processing' }
       setResults({ ...newResults })
-      setStatus({ type: 'info', message: `处理中... ${i + 1} / ${files.length}（${file.name}）` })
+      setStatus({ type: 'info', message: (t.batch.processingStatus || '处理中... {current} / {total}（{name}）').replace('{current}', i + 1).replace('{total}', files.length).replace('{name}', file.name) })
 
       try {
         let result
@@ -192,18 +194,18 @@ function BatchPage() {
 
     setProcessing(false)
     if (abortRef.current) {
-      setStatus({ type: 'info', message: `已停止：成功 ${successCount}，失败 ${failCount}` })
+      setStatus({ type: 'info', message: (t.batch.stoppedStatus || '已停止：成功 {success}，失败 {fail}').replace('{success}', successCount).replace('{fail}', failCount) })
     } else {
       if (successCount > 0) {
         setStatus({
           type: 'success',
-          message: `处理完成！成功 ${successCount}，失败 ${failCount}。点击「全部导出」保存文件。`,
+          message: (t.batch.completedStatus || '处理完成！成功 {success}，失败 {fail}。点击「全部导出」保存文件。').replace('{success}', successCount).replace('{fail}', failCount),
         })
         setTimeout(() => {
           handleSaveAll()
         }, 800)
       } else {
-        setStatus({ type: 'error', message: `处理完成：全部失败（${failCount} 个）` })
+        setStatus({ type: 'error', message: (t.batch.allFailedStatus || '处理完成：全部失败（{fail} 个）').replace('{fail}', failCount) })
       }
     }
   }
@@ -248,9 +250,9 @@ function BatchPage() {
 
     const writeResult = await window.electronAPI.writeFiles(outFiles)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `已保存 ${outFiles.length} 个文件到：${dirPath}` })
+      setStatus({ type: 'success', message: (t.batch.savedToDir || '已保存 {count} 个文件到：{path}').replace('{count}', outFiles.length).replace('{path}', dirPath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.batch.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -262,17 +264,17 @@ function BatchPage() {
     <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Layers}
-        title="批量处理"
-        description="一次选择多个 PDF，批量执行压缩、加密、提取文字等操作"
+        title={t.batch.title || '批量处理'}
+        description={t.batch.pageDescription || '一次选择多个 PDF，批量执行压缩、加密、提取文字等操作'}
       >
         <Button size="sm" onClick={handleAddFiles} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          添加文件
+          {t.batch.addFiles || '添加文件'}
         </Button>
         {files.length > 0 && !processing && (
           <Button variant="outline" size="sm" onClick={handleClearAll}>
             <X className="mr-1.5 h-4 w-4" />
-            清空
+            {t.batch.clear || '清空'}
           </Button>
         )}
         <Button
@@ -284,12 +286,12 @@ function BatchPage() {
           {processing ? (
             <>
               <Pause className="mr-1.5 h-4 w-4" />
-              停止
+              {t.batch.stop || '停止'}
             </>
           ) : (
             <>
               <Play className="mr-1.5 h-4 w-4" />
-              开始处理
+              {t.batch.startProcess || '开始处理'}
             </>
           )}
         </Button>
@@ -300,7 +302,7 @@ function BatchPage() {
           disabled={successCount === 0 || processing}
         >
           <Save className="mr-1.5 h-4 w-4" />
-          全部导出
+          {t.batch.exportAll || '全部导出'}
         </Button>
       </PageHeader>
 
@@ -310,16 +312,16 @@ function BatchPage() {
         {/* 左侧：文件列表 */}
         <Card className="flex flex-1 flex-col overflow-hidden">
           <div className="flex items-center justify-between border-b px-4 py-2.5">
-            <h3 className="text-sm font-medium">文件列表</h3>
+            <h3 className="text-sm font-medium">{t.batch.fileListTitle || '文件列表'}</h3>
             <Badge variant="secondary" className="text-xs">
-              {files.length} 个文件
+              {(t.batch.filesCount || '{count} 个文件').replace('{count}', files.length)}
             </Badge>
           </div>
           <ScrollArea className="flex-1">
             {files.length === 0 ? (
               <div className="flex h-40 flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
                 <FolderOpen className="h-8 w-8 opacity-50" />
-                <span>点击「添加文件」开始</span>
+                <span>{t.batch.emptyHint || '点击「添加文件」开始'}</span>
               </div>
             ) : (
               <div className="divide-y">
@@ -358,7 +360,7 @@ function BatchPage() {
                           )}
                           {r?.status === 'success' && operation === 'extractText' && r.result?.fullText && (
                             <span className="ml-2 text-emerald-500">
-                              {r.result.fullText.length} 字
+                              {(t.batch.charsCount || '{count} 字').replace('{count}', r.result.fullText.length)}
                             </span>
                           )}
                         </div>
@@ -372,7 +374,7 @@ function BatchPage() {
                         )}
                         {r?.status === 'error' && (
                           <Badge variant="destructive" className="text-[10px]" title={r.error}>
-                            失败
+                            {t.batch.failed || '失败'}
                           </Badge>
                         )}
                         {!processing && (
@@ -395,11 +397,11 @@ function BatchPage() {
         {/* 右侧：操作设置 */}
         <Card className="flex w-full shrink-0 flex-col md:w-80">
           <div className="border-b px-4 py-2.5">
-            <h3 className="text-sm font-medium">操作设置</h3>
+            <h3 className="text-sm font-medium">{t.batch.operationsTitle || '操作设置'}</h3>
           </div>
           <div className="space-y-4 p-4">
             <div>
-              <Label className="text-xs text-muted-foreground">选择操作</Label>
+              <Label className="text-xs text-muted-foreground">{t.batch.selectOperation || '选择操作'}</Label>
               <div className="mt-2 space-y-1.5">
                 {OPERATIONS.map((op) => {
                   const Icon = op.icon
@@ -419,7 +421,7 @@ function BatchPage() {
                       <div className={cn('flex h-7 w-7 items-center justify-center rounded-md', op.bg)}>
                         <Icon className={cn('h-4 w-4', op.color)} />
                       </div>
-                      <span className="font-medium">{op.label}</span>
+                      <span className="font-medium">{t.batch[op.labelKey] || op.id}</span>
                     </button>
                   )
                 })}
@@ -428,12 +430,12 @@ function BatchPage() {
 
             {operation === 'compress' && (
               <div>
-                <Label className="text-xs text-muted-foreground">压缩模式</Label>
+                <Label className="text-xs text-muted-foreground">{t.batch.compressMode || '压缩模式'}</Label>
                 <div className="mt-2 space-y-1.5">
                   {[
-                    { value: 'fast', label: '极速压缩', desc: '无损，最快' },
-                    { value: 'recommended', label: '推荐压缩', desc: '体积与质量平衡' },
-                    { value: 'strong', label: '强力压缩', desc: '重编码图片，体积小' },
+                    { value: 'fast', label: t.batch.modeFast || '极速压缩', desc: t.batch.modeFastDesc || '无损，最快' },
+                    { value: 'recommended', label: t.batch.modeRecommended || '推荐压缩', desc: t.batch.modeRecommendedDesc || '体积与质量平衡' },
+                    { value: 'strong', label: t.batch.modeStrong || '强力压缩', desc: t.batch.modeStrongDesc || '重编码图片，体积小' },
                   ].map((m) => (
                     <button
                       key={m.value}
@@ -456,17 +458,17 @@ function BatchPage() {
 
             {operation === 'encrypt' && (
               <div>
-                <Label className="text-xs text-muted-foreground">加密密码</Label>
+                <Label className="text-xs text-muted-foreground">{t.batch.encryptPassword || '加密密码'}</Label>
                 <div className="mt-2">
                   <Input
                     type="password"
-                    placeholder="请输入密码"
+                    placeholder={t.batch.passwordPlaceholder || '请输入密码'}
                     value={encryptPassword}
                     onChange={(e) => setEncryptPassword(e.target.value)}
                     disabled={processing}
                   />
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    所有文件将使用同一密码加密
+                    {t.batch.passwordHint || '所有文件将使用同一密码加密'}
                   </p>
                 </div>
               </div>
@@ -474,7 +476,7 @@ function BatchPage() {
 
             {operation === 'extractText' && (
               <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                提取每个 PDF 的文字内容，保存为 .txt 文件
+                {t.batch.extractTextHint || '提取每个 PDF 的文字内容，保存为 .txt 文件'}
               </div>
             )}
           </div>
@@ -483,15 +485,15 @@ function BatchPage() {
           <div className="border-t p-4">
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-muted-foreground">
-                <span>总文件数</span>
+                <span>{t.batch.totalFiles || '总文件数'}</span>
                 <span className="font-medium text-foreground">{files.length}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>成功</span>
+                <span>{t.batch.successCount || '成功'}</span>
                 <span className="font-medium text-emerald-500">{successCount}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>失败</span>
+                <span>{t.batch.errorCount || '失败'}</span>
                 <span className="font-medium text-red-500">{errorCount}</span>
               </div>
             </div>

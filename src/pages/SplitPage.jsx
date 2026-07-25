@@ -12,8 +12,10 @@ import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 
 function SplitPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [splitMode, setSplitMode] = useState('every')
   const [pageCount, setPageCount] = useState(1)
@@ -48,39 +50,39 @@ function SplitPage() {
         })
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
+        setStatus({ type: 'error', message: (t.split.loadError || '加载 PDF 失败：{error}').replace('{error}', e.message) })
       }
     }
   }
 
   const handleSplit = async () => {
     if (!file) {
-      setStatus({ type: 'error', message: '请先选择 PDF 文件' })
+      setStatus({ type: 'error', message: t.split.selectFileError || '请先选择 PDF 文件' })
       return
     }
 
     let options = {}
     if (splitMode === 'every') {
       if (pageCount < 1) {
-        setStatus({ type: 'error', message: '每页数量必须大于 0' })
+        setStatus({ type: 'error', message: t.split.pageCountError || '每页数量必须大于 0' })
         return
       }
       options.pageCount = parseInt(pageCount, 10)
     } else if (splitMode === 'ranges') {
       if (!rangeInput.trim()) {
-        setStatus({ type: 'error', message: '请输入页码范围' })
+        setStatus({ type: 'error', message: t.split.rangeRequired || '请输入页码范围' })
         return
       }
       const ranges = rangeInput.split(',').map((s) => s.trim()).filter(Boolean)
       if (ranges.length === 0) {
-        setStatus({ type: 'error', message: '请输入有效的页码范围' })
+        setStatus({ type: 'error', message: t.split.rangeInvalid || '请输入有效的页码范围' })
         return
       }
       options.ranges = ranges
     }
 
     setProcessing(true)
-    setStatus({ type: 'info', message: '正在拆分 PDF 文件...' })
+    setStatus({ type: 'info', message: t.split.splittingStatus || '正在拆分 PDF 文件...' })
 
     try {
       const outputs = await splitPdf(file.data, splitMode, options)
@@ -102,13 +104,15 @@ function SplitPage() {
       if (writeResult.success) {
         setStatus({
           type: 'success',
-          message: `拆分成功！共生成 ${outputs.length} 个文件，已保存到：${outputDir}`,
+          message: (t.split.splitSuccess || '拆分成功！共生成 {count} 个文件，已保存到：{path}')
+            .replace('{count}', outputs.length)
+            .replace('{path}', outputDir),
         })
       } else {
-        setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+        setStatus({ type: 'error', message: (t.split.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
       }
     } catch (error) {
-      setStatus({ type: 'error', message: `拆分失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.split.splitError || '拆分失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -122,18 +126,18 @@ function SplitPage() {
   const modeOptions = [
     {
       key: 'every',
-      label: '按页数拆分',
-      desc: '每 N 页为一个文件',
+      label: t.split.modeEveryLabel || '按页数拆分',
+      desc: t.split.modeEveryDesc || '每 N 页为一个文件',
     },
     {
       key: 'single',
-      label: '单页拆分',
-      desc: '每页拆为一个文件',
+      label: t.split.modeSingleLabel || '单页拆分',
+      desc: t.split.modeSingleDesc || '每页拆为一个文件',
     },
     {
       key: 'ranges',
-      label: '按范围拆分',
-      desc: '按指定页码范围拆分',
+      label: t.split.modeRangesLabel || '按范围拆分',
+      desc: t.split.modeRangesDesc || '按指定页码范围拆分',
     },
   ]
 
@@ -143,13 +147,13 @@ function SplitPage() {
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Scissors}
-        title="拆分 PDF"
-        description="将 PDF 文件拆分为多个独立的文档"
+        title={t.split.title || '拆分 PDF'}
+        description={t.split.pageDescription || '将 PDF 文件拆分为多个独立的文档'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.split.changeFile || '更换文件'}
           </Button>
         )}
         <Button
@@ -160,12 +164,12 @@ function SplitPage() {
           {processing ? (
             <>
               <Sparkles className="mr-1.5 h-4 w-4 animate-pulse" />
-              拆分中...
+              {t.split.splitting || '拆分中...'}
             </>
           ) : (
             <>
               <FileOutput className="mr-1.5 h-4 w-4" />
-              开始拆分
+              {t.split.split || '开始拆分'}
             </>
           )}
         </Button>
@@ -176,30 +180,30 @@ function SplitPage() {
       {!file ? (
         <EmptyState
           icon={Scissors}
-          title="还没有选择 PDF"
-          description="点击下方按钮选择需要拆分的 PDF 文件，支持按页数、单页或自定义范围三种拆分方式"
-          actionLabel="选择 PDF 文件"
+          title={t.split.emptyTitle || '还没有选择 PDF'}
+          description={t.split.emptyDescription || '点击下方按钮选择需要拆分的 PDF 文件，支持按页数、单页或自定义范围三种拆分方式'}
+          actionLabel={t.split.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '按页数：每 N 页生成一个 PDF',
-            '单页拆分：每页都独立为一个 PDF',
-            '按范围：自定义页码范围，如 1-3, 5-7',
+            t.split.tip1 || '按页数：每 N 页生成一个 PDF',
+            t.split.tip2 || '单页拆分：每页都独立为一个 PDF',
+            t.split.tip3 || '按范围：自定义页码范围，如 1-3, 5-7',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-5 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`共 ${file.pageCount} 页`}
+            meta={(t.split.totalPagesText || '共 {count} 页').replace('{count}', file.pageCount)}
             onRemove={!processing ? handleClear : undefined}
           />
 
           <Card className="flex-1 overflow-hidden">
             <CardContent className="flex h-full flex-col p-0">
               <div className="border-b px-5 py-3">
-                <h3 className="text-sm font-semibold">选择拆分方式</h3>
+                <h3 className="text-sm font-semibold">{t.split.selectModeTitle || '选择拆分方式'}</h3>
                 <p className="text-xs text-muted-foreground">
-                  选择适合的拆分模式后，下方会显示对应的参数配置
+                  {t.split.selectModeHint || '选择适合的拆分模式后，下方会显示对应的参数配置'}
                 </p>
               </div>
 
@@ -242,7 +246,7 @@ function SplitPage() {
               <div className="flex-1 overflow-y-auto p-5">
                 {splitMode === 'every' && (
                   <div className="flex flex-col gap-3">
-                    <Label className="text-sm">每 N 页拆分为一个文件</Label>
+                    <Label className="text-sm">{t.split.everyNLabel || '每 N 页拆分为一个文件'}</Label>
                     <div className="flex items-center gap-3">
                       <Input
                         type="number"
@@ -253,37 +257,38 @@ function SplitPage() {
                         disabled={processing}
                         className="w-32"
                       />
-                      <span className="text-sm text-muted-foreground">页 / 文件</span>
+                      <span className="text-sm text-muted-foreground">{t.split.pagesPerFile || '页 / 文件'}</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      将生成约{' '}
+                      {(t.split.willGenerateAbout || '将生成约 {count} 个文件').split('{count}')[0]}
                       <span className="font-medium text-foreground">
                         {Math.ceil(file.pageCount / Math.max(1, parseInt(pageCount, 10) || 1))}
-                      </span>{' '}
-                      个文件
+                      </span>
+                      {(t.split.willGenerateAbout || '将生成约 {count} 个文件').split('{count}')[1]}
                     </p>
                   </div>
                 )}
 
                 {splitMode === 'single' && (
                   <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-                    将 PDF 的每一页都拆分为独立的 PDF 文件，共生成{' '}
-                    <span className="font-medium text-foreground">{file.pageCount}</span> 个文件
+                    {(t.split.singleDesc || '将 PDF 的每一页都拆分为独立的 PDF 文件，共生成 {count} 个文件').split('{count}')[0]}
+                    <span className="font-medium text-foreground">{file.pageCount}</span>
+                    {(t.split.singleDesc || '将 PDF 的每一页都拆分为独立的 PDF 文件，共生成 {count} 个文件').split('{count}')[1]}
                   </div>
                 )}
 
                 {splitMode === 'ranges' && (
                   <div className="flex flex-col gap-3">
-                    <Label className="text-sm">页码范围</Label>
+                    <Label className="text-sm">{t.split.rangeLabel || '页码范围'}</Label>
                     <Textarea
                       value={rangeInput}
                       onChange={(e) => setRangeInput(e.target.value)}
-                      placeholder="例如：1-3, 5-7, 10-15"
+                      placeholder={t.split.rangePlaceholder || '例如：1-3, 5-7, 10-15'}
                       rows={4}
                       disabled={processing}
                     />
                     <p className="text-xs text-muted-foreground">
-                      格式：起始页-结束页，多个范围用英文逗号分隔
+                      {t.split.rangeHint || '格式：起始页-结束页，多个范围用英文逗号分隔'}
                     </p>
                   </div>
                 )}
@@ -294,10 +299,10 @@ function SplitPage() {
                 {canSplit ? (
                   <span className="flex items-center gap-1.5">
                     <FolderOpen className="h-3.5 w-3.5" />
-                    已准备好，点击右上角“开始拆分”选择保存位置
+                    {t.split.readyHint || '已准备好，点击右上角“开始拆分”选择保存位置'}
                   </span>
                 ) : (
-                  <span>请填写拆分参数后再开始拆分</span>
+                  <span>{t.split.notReadyHint || '请填写拆分参数后再开始拆分'}</span>
                 )}
               </div>
             </CardContent>

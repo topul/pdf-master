@@ -18,9 +18,11 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
 
 function PdfToImagePage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [pageCount, setPageCount] = useState(0)
   const [pageImages, setPageImages] = useState([])
@@ -60,7 +62,7 @@ function PdfToImagePage() {
         setPageImages([])
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
+        setStatus({ type: 'error', message: (t.pdfToImagePage.loadError || '加载 PDF 失败：{error}').replace('{error}', e.message) })
       }
     }
   }
@@ -69,7 +71,7 @@ function PdfToImagePage() {
     if (!file) return
     setProcessing(true)
     setRendering(true)
-    setStatus({ type: 'info', message: '正在将 PDF 转换为图片...' })
+    setStatus({ type: 'info', message: t.pdfToImagePage.convertingStatus || '正在将 PDF 转换为图片...' })
     setPageImages([])
 
     try {
@@ -103,9 +105,9 @@ function PdfToImagePage() {
         setPageImages(images)
       }
 
-      setStatus({ type: 'success', message: `转换成功！共 ${images.length} 页已转为图片` })
+      setStatus({ type: 'success', message: (t.pdfToImagePage.convertSuccess || '转换成功！共 {count} 页已转为图片').replace('{count}', images.length) })
     } catch (error) {
-      setStatus({ type: 'error', message: `转换失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.pdfToImagePage.convertError || '转换失败：{error}').replace('{error}', error.message) })
     }
     setProcessing(false)
     setRendering(false)
@@ -134,9 +136,9 @@ function PdfToImagePage() {
 
     const writeResult = await window.electronAPI.writeFiles(files)
     if (writeResult.success) {
-      setStatus({ type: 'success', message: `保存成功！已保存 ${files.length} 张图片到：${dirPath}` })
+      setStatus({ type: 'success', message: (t.pdfToImagePage.saveSuccess || '保存成功！已保存 {count} 张图片到：{path}').replace('{count}', files.length).replace('{path}', dirPath) })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.pdfToImagePage.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -149,36 +151,36 @@ function PdfToImagePage() {
   }
 
   const formatOptions = [
-    { value: 'png', label: 'PNG（无损）' },
-    { value: 'jpg', label: 'JPG（有损）' },
+    { value: 'png', label: t.pdfToImagePage.formatPng || 'PNG（无损）' },
+    { value: 'jpg', label: t.pdfToImagePage.formatJpg || 'JPG（有损）' },
   ]
 
   const scaleOptions = [
-    { value: 1, label: '1x（标准）' },
-    { value: 2, label: '2x（高清）' },
-    { value: 3, label: '3x（超清）' },
+    { value: 1, label: t.pdfToImagePage.scale1x || '1x（标准）' },
+    { value: 2, label: t.pdfToImagePage.scale2x || '2x（高清）' },
+    { value: 3, label: t.pdfToImagePage.scale3x || '3x（超清）' },
   ]
 
   return (
     <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={ImageIcon}
-        title="PDF 转图片"
-        description="将 PDF 的每一页导出为高清图片"
+        title={t.pdfToImagePage.title || 'PDF 转图片'}
+        description={t.pdfToImagePage.description || '将 PDF 的每一页导出为高清图片'}
       >
         {file && (
           <Button variant="outline" size="sm" onClick={handleClear} disabled={processing}>
             <FileText className="mr-1.5 h-4 w-4" />
-            更换文件
+            {t.pdfToImagePage.changeFile || '更换文件'}
           </Button>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.pdfToImagePage.selectFile || '选择文件'}
         </Button>
         <Button size="sm" onClick={handleSaveAll} disabled={processing || pageImages.length === 0}>
           <Download className="mr-1.5 h-4 w-4" />
-          全部保存
+          {t.pdfToImagePage.saveAll || '全部保存'}
         </Button>
       </PageHeader>
 
@@ -187,34 +189,34 @@ function PdfToImagePage() {
       {!file ? (
         <EmptyState
           icon={ImageIcon}
-          title="还没有选择 PDF"
-          description="选择一个 PDF，将每一页导出为 PNG 或 JPG 图片"
-          actionLabel="选择 PDF 文件"
+          title={t.pdfToImagePage.emptyTitle || '还没有选择 PDF'}
+          description={t.pdfToImagePage.emptyDescription || '选择一个 PDF，将每一页导出为 PNG 或 JPG 图片'}
+          actionLabel={t.pdfToImagePage.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '支持 PNG（无损）和 JPG（有损）两种格式',
-            '可调节输出分辨率：1x / 2x / 3x',
-            '所有页面一次性批量导出',
+            t.pdfToImagePage.tip1 || '支持 PNG（无损）和 JPG（有损）两种格式',
+            t.pdfToImagePage.tip2 || '可调节输出分辨率：1x / 2x / 3x',
+            t.pdfToImagePage.tip3 || '所有页面一次性批量导出',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`共 ${pageCount} 页`}
+            meta={(t.pdfToImagePage.metaPages || '共 {count} 页').replace('{count}', pageCount)}
             onRemove={!processing ? handleClear : undefined}
           />
 
           <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[320px_1fr]">
             <Card className="flex flex-col overflow-hidden">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">导出设置</h3>
-                <p className="text-xs text-muted-foreground">调整图片格式与分辨率</p>
+                <h3 className="text-sm font-medium">{t.pdfToImagePage.settingsTitle || '导出设置'}</h3>
+                <p className="text-xs text-muted-foreground">{t.pdfToImagePage.settingsDesc || '调整图片格式与分辨率'}</p>
               </div>
 
               <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm">图片格式</Label>
+                  <Label className="text-sm">{t.pdfToImagePage.formatLabel || '图片格式'}</Label>
                   <div className="grid grid-cols-2 gap-2">
                     {formatOptions.map((opt) => (
                       <button
@@ -237,7 +239,7 @@ function PdfToImagePage() {
                 {format === 'jpg' && (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-sm">JPG 质量</Label>
+                      <Label className="text-sm">{t.pdfToImagePage.jpgQuality || 'JPG 质量'}</Label>
                       <span className="text-xs text-muted-foreground">{quality}%</span>
                     </div>
                     <input
@@ -253,7 +255,7 @@ function PdfToImagePage() {
                 )}
 
                 <div className="flex flex-col gap-2">
-                  <Label className="text-sm">输出分辨率</Label>
+                  <Label className="text-sm">{t.pdfToImagePage.scaleLabel || '输出分辨率'}</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {scaleOptions.map((opt) => (
                       <button
@@ -281,12 +283,12 @@ function PdfToImagePage() {
                   {processing ? (
                     <>
                       <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                      转换中...
+                      {t.pdfToImagePage.converting || '转换中...'}
                     </>
                   ) : (
                     <>
                       <Sparkles className="mr-1.5 h-4 w-4" />
-                      开始转换
+                      {t.pdfToImagePage.convertButton || '开始转换'}
                     </>
                   )}
                 </Button>
@@ -296,12 +298,12 @@ function PdfToImagePage() {
             <Card className="flex flex-col overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2.5">
                 <span className="text-sm font-medium">
-                  {pageImages.length > 0 ? `图片预览（${pageImages.length} 页）` : '图片预览'}
+                  {pageImages.length > 0 ? (t.pdfToImagePage.previewCount || '图片预览（{count} 页）').replace('{count}', pageImages.length) : (t.pdfToImagePage.previewTitle || '图片预览')}
                 </span>
                 {rendering && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    渲染中...
+                    {t.pdfToImagePage.rendering || '渲染中...'}
                   </span>
                 )}
               </div>
@@ -316,11 +318,11 @@ function PdfToImagePage() {
                         <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-muted/30">
                           <img
                             src={img.url}
-                            alt={`第 ${idx + 1} 页`}
+                            alt={(t.pdfToImagePage.pageAlt || '第 {n} 页').replace('{n}', idx + 1)}
                             className="h-full w-full object-contain"
                           />
                           <div className="absolute left-1.5 top-1.5 flex h-5 items-center justify-center rounded-full bg-background/90 px-1.5 text-[10px] font-medium text-foreground shadow-sm">
-                            第 {idx + 1} 页
+                            {(t.pdfToImagePage.pageAlt || '第 {n} 页').replace('{n}', idx + 1)}
                           </div>
                         </div>
                         <div className="border-t px-2 py-1.5">
@@ -333,7 +335,7 @@ function PdfToImagePage() {
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                    {rendering ? '正在渲染...' : '点击「开始转换」生成图片预览'}
+                    {rendering ? (t.pdfToImagePage.renderingStatus || '正在渲染...') : (t.pdfToImagePage.clickToConvert || '点击「开始转换」生成图片预览')}
                   </div>
                 )}
               </div>

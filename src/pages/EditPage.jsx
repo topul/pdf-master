@@ -31,8 +31,10 @@ import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 
 function EditPage() {
+  const t = useTranslations()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [selectedPages, setSelectedPages] = useState(new Set())
@@ -94,7 +96,7 @@ function EditPage() {
         setSelectedPages(new Set())
         setStatus(null)
       } catch (e) {
-        setStatus({ type: 'error', message: `加载 PDF 失败：${e.message}` })
+        setStatus({ type: 'error', message: (t.edit.loadError || '加载 PDF 失败：{error}').replace('{error}', e.message) })
       }
     }
   }
@@ -124,21 +126,21 @@ function EditPage() {
   const handleRotate = async (degrees) => {
     if (!currentData) return
     if (selectedPages.size === 0) {
-      setStatus({ type: 'error', message: '请先选择要旋转的页面' })
+      setStatus({ type: 'error', message: t.edit.selectRotateError || '请先选择要旋转的页面' })
       return
     }
 
     setProcessing(true)
-    setStatus({ type: 'info', message: `正在旋转 ${selectedPages.size} 页...` })
+    setStatus({ type: 'info', message: (t.edit.rotatingStatus || '正在旋转 {count} 页...').replace('{count}', selectedPages.size) })
 
     try {
       const result = await rotatePages(currentData, Array.from(selectedPages), degrees)
       setCurrentData(result)
       const info = await getPdfInfo(result)
       setPageCount(info.pageCount)
-      setStatus({ type: 'success', message: `已旋转 ${selectedPages.size} 页` })
+      setStatus({ type: 'success', message: (t.edit.rotateSuccess || '已旋转 {count} 页').replace('{count}', selectedPages.size) })
     } catch (error) {
-      setStatus({ type: 'error', message: `旋转失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.edit.rotateError || '旋转失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -147,16 +149,16 @@ function EditPage() {
   const handleDelete = async () => {
     if (!currentData) return
     if (selectedPages.size === 0) {
-      setStatus({ type: 'error', message: '请先选择要删除的页面' })
+      setStatus({ type: 'error', message: t.edit.selectDeleteError || '请先选择要删除的页面' })
       return
     }
     if (selectedPages.size >= pageCount) {
-      setStatus({ type: 'error', message: '不能删除所有页面' })
+      setStatus({ type: 'error', message: t.edit.deleteAllError || '不能删除所有页面' })
       return
     }
 
     setProcessing(true)
-    setStatus({ type: 'info', message: `正在删除 ${selectedPages.size} 页...` })
+    setStatus({ type: 'info', message: (t.edit.deletingStatus || '正在删除 {count} 页...').replace('{count}', selectedPages.size) })
 
     try {
       const result = await deletePages(currentData, Array.from(selectedPages))
@@ -164,9 +166,9 @@ function EditPage() {
       const info = await getPdfInfo(result)
       setPageCount(info.pageCount)
       setSelectedPages(new Set())
-      setStatus({ type: 'success', message: `已删除，剩余 ${info.pageCount} 页` })
+      setStatus({ type: 'success', message: (t.edit.deleteSuccess || '已删除，剩余 {count} 页').replace('{count}', info.pageCount) })
     } catch (error) {
-      setStatus({ type: 'error', message: `删除失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.edit.deleteError || '删除失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -175,12 +177,12 @@ function EditPage() {
   const handleExtract = async () => {
     if (!currentData) return
     if (selectedPages.size === 0) {
-      setStatus({ type: 'error', message: '请先选择要提取的页面' })
+      setStatus({ type: 'error', message: t.edit.selectExtractError || '请先选择要提取的页面' })
       return
     }
 
     setProcessing(true)
-    setStatus({ type: 'info', message: `正在提取 ${selectedPages.size} 页...` })
+    setStatus({ type: 'info', message: (t.edit.extractingStatus || '正在提取 {count} 页...').replace('{count}', selectedPages.size) })
 
     try {
       const result = await extractPages(
@@ -202,13 +204,15 @@ function EditPage() {
       if (writeResult.success) {
         setStatus({
           type: 'success',
-          message: `提取成功！共 ${selectedPages.size} 页，已保存到：${saveResult.filePath}`,
+          message: (t.edit.extractSuccess || '提取成功！共 {count} 页，已保存到：{path}')
+            .replace('{count}', selectedPages.size)
+            .replace('{path}', saveResult.filePath),
         })
       } else {
-        setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+        setStatus({ type: 'error', message: (t.edit.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
       }
     } catch (error) {
-      setStatus({ type: 'error', message: `提取失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.edit.extractError || '提取失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -217,7 +221,7 @@ function EditPage() {
   const handleReorder = async () => {
     if (!currentData) return
     if (!newOrder.trim()) {
-      setStatus({ type: 'error', message: '请输入新的页面顺序' })
+      setStatus({ type: 'error', message: t.edit.reorderEmptyError || '请输入新的页面顺序' })
       return
     }
 
@@ -229,28 +233,29 @@ function EditPage() {
     if (order.length !== pageCount) {
       setStatus({
         type: 'error',
-        message: `页码数量不匹配。PDF 共 ${pageCount} 页，请提供 ${pageCount} 个页码`,
+        message: (t.edit.reorderCountError || '页码数量不匹配。PDF 共 {total} 页，请提供 {total} 个页码')
+          .replace(/\{total\}/g, pageCount),
       })
       return
     }
 
     const unique = new Set(order)
     if (unique.size !== pageCount) {
-      setStatus({ type: 'error', message: '页码不能重复' })
+      setStatus({ type: 'error', message: t.edit.reorderDuplicateError || '页码不能重复' })
       return
     }
 
     setProcessing(true)
-    setStatus({ type: 'info', message: '正在重新排序页面...' })
+    setStatus({ type: 'info', message: t.edit.reorderingStatus || '正在重新排序页面...' })
 
     try {
       const result = await reorderPages(currentData, order)
       setCurrentData(result)
       setSelectedPages(new Set())
       setNewOrder('')
-      setStatus({ type: 'success', message: '页面已重新排序' })
+      setStatus({ type: 'success', message: t.edit.reorderSuccess || '页面已重新排序' })
     } catch (error) {
-      setStatus({ type: 'error', message: `排序失败：${error.message}` })
+      setStatus({ type: 'error', message: (t.edit.reorderError || '排序失败：{error}').replace('{error}', error.message) })
     }
 
     setProcessing(false)
@@ -269,10 +274,10 @@ function EditPage() {
     if (writeResult.success) {
       setStatus({
         type: 'success',
-        message: `保存成功！文件已保存到：${saveResult.filePath}`,
+        message: (t.edit.saveSuccess || '保存成功！文件已保存到：{path}').replace('{path}', saveResult.filePath),
       })
     } else {
-      setStatus({ type: 'error', message: `保存失败：${writeResult.error}` })
+      setStatus({ type: 'error', message: (t.edit.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
     }
   }
 
@@ -281,7 +286,7 @@ function EditPage() {
     setCurrentData(file.data)
     setPageCount(file.pageCount)
     setSelectedPages(new Set())
-    setStatus({ type: 'info', message: '已重置为原始文件' })
+    setStatus({ type: 'info', message: t.edit.resetStatus || '已重置为原始文件' })
   }
 
   const handleClear = () => {
@@ -294,34 +299,34 @@ function EditPage() {
   }
 
   const tabsConfig = [
-    { key: 'rotate', label: '旋转', icon: RotateCw },
-    { key: 'delete', label: '删除', icon: Trash2 },
-    { key: 'extract', label: '提取', icon: FileOutput },
-    { key: 'reorder', label: '排序', icon: ListOrdered },
+    { key: 'rotate', label: t.edit.tabRotate || '旋转', icon: RotateCw },
+    { key: 'delete', label: t.edit.tabDelete || '删除', icon: Trash2 },
+    { key: 'extract', label: t.edit.tabExtract || '提取', icon: FileOutput },
+    { key: 'reorder', label: t.edit.tabReorder || '排序', icon: ListOrdered },
   ]
 
   return (
     <div className="mx-auto flex h-full w-full max-w-7xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={PencilLine}
-        title="编辑 PDF"
-        description="旋转、删除、提取和重新排序 PDF 页面，支持实时预览"
+        title={t.edit.title || '编辑 PDF'}
+        description={t.edit.pageDescription || '旋转、删除、提取和重新排序 PDF 页面，支持实时预览'}
       >
         {file && (
           <>
             <Button variant="outline" size="sm" onClick={handleReset} disabled={processing}>
               <RotateCcw className="mr-1.5 h-4 w-4" />
-              重置
+              {t.edit.resetButton || '重置'}
             </Button>
             <Button variant="outline" size="sm" onClick={handleClear} disabled={processing}>
               <FileText className="mr-1.5 h-4 w-4" />
-              更换文件
+              {t.edit.changeFile || '更换文件'}
             </Button>
           </>
         )}
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
-          选择文件
+          {t.edit.selectFileButton || '选择文件'}
         </Button>
         <Button
           size="sm"
@@ -329,7 +334,7 @@ function EditPage() {
           disabled={processing || !currentData}
         >
           <Save className="mr-1.5 h-4 w-4" />
-          保存
+          {t.edit.saveButton || '保存'}
         </Button>
       </PageHeader>
 
@@ -338,21 +343,23 @@ function EditPage() {
       {!file ? (
         <EmptyState
           icon={PencilLine}
-          title="还没有选择 PDF"
-          description="选择一个 PDF 后，可以在此页面进行旋转、删除、提取和重新排序等编辑操作"
-          actionLabel="选择 PDF 文件"
+          title={t.edit.emptyTitle || '还没有选择 PDF'}
+          description={t.edit.emptyDescription || '选择一个 PDF 后，可以在此页面进行旋转、删除、提取和重新排序等编辑操作'}
+          actionLabel={t.edit.emptyActionLabel || '选择 PDF 文件'}
           onAction={handleSelectFile}
           tips={[
-            '可点击缩略图选择一个或多个页面',
-            '所有操作都会实时反映在预览中',
-            '编辑完成后点击“保存”导出新文件',
+            t.edit.tip1 || '可点击缩略图选择一个或多个页面',
+            t.edit.tip2 || '所有操作都会实时反映在预览中',
+            t.edit.tip3 || '编辑完成后点击“保存”导出新文件',
           ]}
         />
       ) : (
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <FileInfoCard
             name={file.name}
-            meta={`共 ${pageCount} 页 · 已选 ${selectedPages.size} 页`}
+            meta={(t.edit.metaText || '共 {total} 页 · 已选 {selected} 页')
+              .replace('{total}', pageCount)
+              .replace('{selected}', selectedPages.size)}
             onRemove={!processing ? handleClear : undefined}
           />
 
@@ -360,7 +367,7 @@ function EditPage() {
             {/* 缩略图面板 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="flex items-center justify-between border-b px-4 py-2.5">
-                <span className="text-sm font-medium">页面预览</span>
+                <span className="text-sm font-medium">{t.edit.pagePreview || '页面预览'}</span>
                 <div className="flex items-center gap-1.5">
                   <Button
                     variant="ghost"
@@ -369,7 +376,7 @@ function EditPage() {
                     disabled={processing}
                     className="h-7 px-2 text-xs"
                   >
-                    全选
+                    {t.edit.selectAll || '全选'}
                   </Button>
                   <Button
                     variant="ghost"
@@ -378,7 +385,7 @@ function EditPage() {
                     disabled={processing}
                     className="h-7 px-2 text-xs"
                   >
-                    取消
+                    {t.edit.deselect || '取消'}
                   </Button>
                   <div className="mx-1 h-4 w-px bg-border" />
                   <Button
@@ -387,7 +394,7 @@ function EditPage() {
                     className="h-7 w-7"
                     onClick={() => setPreviewScale(Math.max(0.2, previewScale - 0.1))}
                     disabled={processing}
-                    title="缩小"
+                    title={t.edit.zoomOut || '缩小'}
                   >
                     <ZoomOut className="h-4 w-4" />
                   </Button>
@@ -400,7 +407,7 @@ function EditPage() {
                     className="h-7 w-7"
                     onClick={() => setPreviewScale(Math.min(1.5, previewScale + 0.1))}
                     disabled={processing}
-                    title="放大"
+                    title={t.edit.zoomIn || '放大'}
                   >
                     <ZoomIn className="h-4 w-4" />
                   </Button>
@@ -411,7 +418,7 @@ function EditPage() {
                 {renderingPreview ? (
                   <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-6 w-6 animate-spin" />
-                    <span className="text-sm">渲染预览中...</span>
+                    <span className="text-sm">{t.edit.renderingPreview || '渲染预览中...'}</span>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
@@ -435,7 +442,7 @@ function EditPage() {
                             {img?.url ? (
                               <img
                                 src={img.url}
-                                alt={`第 ${i + 1} 页`}
+                                alt={(t.edit.pageAlt || '第 {n} 页').replace('{n}', i + 1)}
                                 className="h-full w-full object-contain"
                               />
                             ) : (
@@ -470,9 +477,9 @@ function EditPage() {
             {/* 工具面板 */}
             <Card className="flex flex-col overflow-hidden">
               <div className="border-b px-4 py-2.5">
-                <h3 className="text-sm font-medium">编辑工具</h3>
+                <h3 className="text-sm font-medium">{t.edit.editTools || '编辑工具'}</h3>
                 <p className="text-xs text-muted-foreground">
-                  已选择 {selectedPages.size} 页
+                  {(t.edit.selectedPagesText || '已选择 {count} 页').replace('{count}', selectedPages.size)}
                 </p>
               </div>
               <Tabs
@@ -500,9 +507,9 @@ function EditPage() {
                   <TabsContent value="rotate" className="mt-0">
                     <div className="flex flex-col gap-3">
                       <div>
-                        <h4 className="text-sm font-medium">旋转页面</h4>
+                        <h4 className="text-sm font-medium">{t.edit.rotateTitle || '旋转页面'}</h4>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          将选中的页面旋转 90° 或 180°
+                          {t.edit.rotateDesc || '将选中的页面旋转 90° 或 180°'}
                         </p>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
@@ -514,7 +521,7 @@ function EditPage() {
                           className="flex flex-col items-center gap-1 py-3"
                         >
                           <RotateCcw className="h-5 w-5" />
-                          <span className="text-xs">逆时针 90°</span>
+                          <span className="text-xs">{t.edit.rotateCCW || '逆时针 90°'}</span>
                         </Button>
                         <Button
                           variant="outline"
@@ -524,7 +531,7 @@ function EditPage() {
                           className="flex flex-col items-center gap-1 py-3"
                         >
                           <RotateCw className="h-5 w-5" />
-                          <span className="text-xs">顺时针 90°</span>
+                          <span className="text-xs">{t.edit.rotateCW || '顺时针 90°'}</span>
                         </Button>
                         <Button
                           variant="outline"
@@ -534,7 +541,7 @@ function EditPage() {
                           className="flex flex-col items-center gap-1 py-3"
                         >
                           <RotateCw className="h-5 w-5" />
-                          <span className="text-xs">180°</span>
+                          <span className="text-xs">{t.edit.rotate180 || '180°'}</span>
                         </Button>
                       </div>
                     </div>
@@ -543,9 +550,9 @@ function EditPage() {
                   <TabsContent value="delete" className="mt-0">
                     <div className="flex flex-col gap-3">
                       <div>
-                        <h4 className="text-sm font-medium">删除页面</h4>
+                        <h4 className="text-sm font-medium">{t.edit.deleteTitle || '删除页面'}</h4>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          删除选中的页面（不可恢复，建议先备份）
+                          {t.edit.deleteDesc || '删除选中的页面（不可恢复，建议先备份）'}
                         </p>
                       </div>
                       <Button
@@ -558,10 +565,10 @@ function EditPage() {
                         }
                       >
                         <Trash2 className="mr-1.5 h-4 w-4" />
-                        删除选中的 {selectedPages.size} 页
+                        {(t.edit.deleteButton || '删除选中的 {count} 页').replace('{count}', selectedPages.size)}
                       </Button>
                       {selectedPages.size >= pageCount && selectedPages.size > 0 && (
-                        <p className="text-xs text-amber-600">不能删除所有页面</p>
+                        <p className="text-xs text-amber-600">{t.edit.deleteAllWarning || '不能删除所有页面'}</p>
                       )}
                     </div>
                   </TabsContent>
@@ -569,9 +576,9 @@ function EditPage() {
                   <TabsContent value="extract" className="mt-0">
                     <div className="flex flex-col gap-3">
                       <div>
-                        <h4 className="text-sm font-medium">提取页面</h4>
+                        <h4 className="text-sm font-medium">{t.edit.extractTitle || '提取页面'}</h4>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          将选中的页面提取为新的 PDF 文件
+                          {t.edit.extractDesc || '将选中的页面提取为新的 PDF 文件'}
                         </p>
                       </div>
                       <Button
@@ -579,7 +586,7 @@ function EditPage() {
                         disabled={processing || selectedPages.size === 0}
                       >
                         <FileOutput className="mr-1.5 h-4 w-4" />
-                        提取选中的 {selectedPages.size} 页
+                        {(t.edit.extractButton || '提取选中的 {count} 页').replace('{count}', selectedPages.size)}
                       </Button>
                     </div>
                   </TabsContent>
@@ -587,15 +594,15 @@ function EditPage() {
                   <TabsContent value="reorder" className="mt-0">
                     <div className="flex flex-col gap-3">
                       <div>
-                        <h4 className="text-sm font-medium">重新排序</h4>
+                        <h4 className="text-sm font-medium">{t.edit.reorderTitle || '重新排序'}</h4>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          输入新的页面顺序，用逗号分隔页码（从 1 开始）
+                          {t.edit.reorderDesc || '输入新的页面顺序，用逗号分隔页码（从 1 开始）'}
                         </p>
                       </div>
                       <Textarea
                         value={newOrder}
                         onChange={(e) => setNewOrder(e.target.value)}
-                        placeholder={`例如：3, 1, 2, 5, 4（共 ${pageCount} 页）`}
+                        placeholder={(t.edit.reorderPlaceholder || '例如：3, 1, 2, 5, 4（共 {count} 页）').replace('{count}', pageCount)}
                         rows={4}
                         disabled={processing}
                       />
@@ -604,7 +611,7 @@ function EditPage() {
                         disabled={processing || !newOrder.trim()}
                       >
                         <ListOrdered className="mr-1.5 h-4 w-4" />
-                        应用排序
+                        {t.edit.applyReorder || '应用排序'}
                       </Button>
                     </div>
                   </TabsContent>
