@@ -27,6 +27,7 @@ import {
   FileText,
   Trash2,
   Clock,
+  BookOpen,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -93,6 +94,14 @@ function HomePage() {
   const { isOpen: menuOpen, renderMenu } = useContextMenu(menuItems, [contextFile])
 
   const mainFeatures = [
+    {
+      path: '/viewer',
+      icon: BookOpen,
+      title: t.common.viewer || '阅读 PDF',
+      description: t.home.feature4 || '阅读、浏览、搜索 PDF 文档',
+      accent: 'from-emerald-500 to-teal-600',
+      tag: '新功能',
+    },
     {
       path: '/merge',
       icon: FilePlus2,
@@ -277,7 +286,7 @@ function HomePage() {
             <p className="text-sm text-muted-foreground">{t.home.description}</p>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {mainFeatures.map((feature) => {
             const Icon = feature.icon
             return (

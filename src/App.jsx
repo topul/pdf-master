@@ -22,7 +22,6 @@ import {
   PenTool,
   FileEdit,
   Bookmark,
-  Globe,
   GitCompare,
   Scan,
   Eraser,
@@ -31,13 +30,12 @@ import {
   Highlighter,
   ListChecks,
   Settings as SettingsIcon,
+  BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import ThemeToggle from '@/components/ThemeToggle.jsx'
-import { useTranslations, useLocale } from '@/hooks/useLocale.jsx'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import useShortcuts from '@/hooks/useShortcuts.jsx'
-import { getLocaleName } from '@/i18n/index.js'
 import MergePage from './pages/MergePage.jsx'
 import SplitPage from './pages/SplitPage.jsx'
 import EditPage from './pages/EditPage.jsx'
@@ -72,8 +70,6 @@ import DragDropProvider from './components/DragDropProvider.jsx'
 function App() {
   const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
-  const [showLangMenu, setShowLangMenu] = useState(false)
-  const { locale, changeLocale } = useLocale()
   const t = useTranslations()
 
   // 注册快捷键
@@ -83,6 +79,7 @@ function App() {
     {
       label: t.nav.core,
       items: [
+        { path: '/viewer', label: t.common.viewer || '阅读 PDF', icon: BookOpen, desc: t.nav.viewerDesc || '阅读并浏览 PDF' },
         { path: '/merge', label: t.common.merge, icon: FilePlus2, desc: t.nav.mergeDesc },
         { path: '/split', label: t.common.split, icon: Scissors, desc: t.nav.splitDesc },
         { path: '/edit', label: t.common.edit, icon: PencilLine, desc: t.nav.editDesc },
@@ -216,7 +213,6 @@ function App() {
 
         <div className="flex flex-col gap-1 border-t p-2">
           <div className={cn('flex', collapsed ? 'flex-col items-center gap-1' : 'items-center justify-between')}>
-            <ThemeToggle />
             <Link
               to="/settings"
               className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -224,40 +220,6 @@ function App() {
             >
               <SettingsIcon className="h-[18px] w-[18px]" />
             </Link>
-            <div className="relative">
-              <button
-                onClick={() => setShowLangMenu(!showLangMenu)}
-                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                title={t.common.language}
-              >
-                <Globe className="h-[18px] w-[18px]" />
-              </button>
-              {showLangMenu && (
-                <div className={cn(
-                  'absolute z-50 w-36 overflow-hidden rounded-md border bg-popover p-1 shadow-md',
-                  collapsed ? 'left-full top-0 ml-2' : 'bottom-full right-0 mb-2'
-                )}>
-                  {availableLocales.map((loc) => (
-                    <button
-                      key={loc.value}
-                      onClick={() => {
-                        changeLocale(loc.value)
-                        setShowLangMenu(false)
-                      }}
-                      className={cn(
-                        'flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-sm transition-colors',
-                        locale === loc.value
-                          ? 'bg-accent text-foreground'
-                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                      )}
-                    >
-                      <Globe className="h-4 w-4" />
-                      <span>{loc.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
             <Button
               variant="ghost"
               size="icon"
