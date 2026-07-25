@@ -96,6 +96,7 @@ export default {
     annotateDesc: 'Highlight/notes',
     formCreateDesc: 'Create form',
     batchRenameDesc: 'Batch rename',
+    viewerDesc: 'Read and browse PDFs',
   },
   home: {
     title: 'PDF Master',
@@ -110,6 +111,7 @@ export default {
     newFeature: 'New',
     popular: 'Popular',
     visual: 'Visual',
+    viewerFeature: 'Read, browse, and search PDF documents',
     feature1: '100% local processing, no server upload',
     feature2: '15+ PDF processing features',
     feature3: 'Clean and intuitive UI',

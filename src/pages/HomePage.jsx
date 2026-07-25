@@ -98,7 +98,7 @@ function HomePage() {
       path: '/viewer',
       icon: BookOpen,
       title: t.common.viewer || '阅读 PDF',
-      description: t.home.feature4 || '阅读、浏览、搜索 PDF 文档',
+      description: t.home.viewerFeature || '阅读、浏览、搜索 PDF 文档',
       accent: 'from-emerald-500 to-teal-600',
       tag: t.home.newFeature || '新功能',
     },

@@ -96,6 +96,7 @@ export default {
     annotateDesc: '高亮/便签',
     formCreateDesc: '创建表单',
     batchRenameDesc: '批量更名',
+    viewerDesc: '阅读并浏览 PDF',
   },
   home: {
     title: 'PDF Master',
@@ -110,6 +111,7 @@ export default {
     newFeature: '新功能',
     popular: '常用',
     visual: '可视化',
+    viewerFeature: '阅读、浏览、搜索 PDF 文档',
     feature1: '完全本地处理，无需上传服务器',
     feature2: '支持 15+ PDF 处理功能',
     feature3: '简洁直观的用户界面',
