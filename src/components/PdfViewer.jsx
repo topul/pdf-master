@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslations } from '@/hooks/useLocale.jsx'
 import {
   ChevronLeft,
   ChevronRight,
@@ -34,6 +35,7 @@ async function loadPdfJs() {
 }
 
 function PdfViewer({ fileData, fileName = 'document.pdf' }) {
+  const t = useTranslations()
   const containerRef = useRef(null)
   const viewportRef = useRef(null)
   const [pdfDoc, setPdfDoc] = useState(null)
@@ -437,7 +439,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
                     <BookOpen className="mb-2 h-6 w-6 opacity-30" />
-                    无目录
+                    {t.viewerPage?.noOutline || '无目录'}
                   </div>
                 )
               )}
@@ -484,7 +486,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{sidebarOpen ? '隐藏侧栏' : '显示侧栏'}</TooltipContent>
+                <TooltipContent>{sidebarOpen ? (t.viewerPage?.hideSidebar || '隐藏侧栏') : (t.viewerPage?.showSidebar || '显示侧栏')}</TooltipContent>
               </Tooltip>
 
               <div className="mx-2 h-5 w-px bg-border" />
@@ -505,7 +507,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {viewMode === 'scroll' ? '单页模式' : '滚动模式'}
+                  {viewMode === 'scroll' ? (t.viewerPage?.singleMode || '单页模式') : (t.viewerPage?.scrollMode || '滚动模式')}
                 </TooltipContent>
               </Tooltip>
 
@@ -523,7 +525,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>上一页</TooltipContent>
+                <TooltipContent>{t.viewerPage?.prevPage || '上一页'}</TooltipContent>
               </Tooltip>
 
               <div className="flex items-center gap-1 text-sm">
@@ -553,7 +555,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>下一页</TooltipContent>
+                <TooltipContent>{t.viewerPage?.nextPage || '下一页'}</TooltipContent>
               </Tooltip>
             </div>
 
@@ -561,7 +563,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
               <div className="relative mr-2">
                 <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="搜索..."
+                  placeholder={t.viewerPage?.searchPlaceholder || '搜索...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && searchText()}
@@ -622,7 +624,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                     <ZoomOut className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>缩小</TooltipContent>
+                <TooltipContent>{t.viewerPage?.zoomOut || '缩小'}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -638,7 +640,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {fitMode === 'width' ? '适合宽度' : fitMode === 'page' ? '适合页面' : '缩放比例'}
+                  {fitMode === 'width' ? (t.viewerPage?.fitWidth || '适合宽度') : fitMode === 'page' ? (t.viewerPage?.fitPage || '适合页面') : (t.viewerPage?.zoomRatio || '缩放比例')}
                 </TooltipContent>
               </Tooltip>
 
@@ -654,7 +656,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                     <ZoomIn className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>放大</TooltipContent>
+                <TooltipContent>{t.viewerPage?.zoomIn || '放大'}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -667,7 +669,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
             {loading ? (
               <div className="flex h-full flex-col items-center justify-center">
                 <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">加载中...</p>
+                <p className="text-sm text-muted-foreground">{t.viewerPage?.loading || '加载中...'}</p>
               </div>
             ) : viewMode === 'scroll' ? (
               <div
