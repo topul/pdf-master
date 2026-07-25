@@ -97,6 +97,12 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
 
   const renderSinglePage = useCallback(async (pageNum, canvas) => {
     if (!pdfDoc || !canvas) return
+    if (renderTasksRef.current[pageNum]) {
+      try {
+        renderTasksRef.current[pageNum].cancel()
+      } catch {}
+      renderTasksRef.current[pageNum] = null
+    }
     try {
       const page = await pdfDoc.getPage(pageNum)
       const viewport = page.getViewport({ scale })
@@ -107,7 +113,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       canvas.height = viewport.height * dpr
       canvas.style.width = viewport.width + 'px'
       canvas.style.height = viewport.height + 'px'
-      context.scale(dpr, dpr)
+      context.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       const renderTask = page.render({
         canvasContext: context,
@@ -390,11 +396,21 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
 
   useEffect(() => {
     if (viewMode === 'scroll' && pdfDoc && !loading) {
+      renderTasksRef.current.forEach((task, idx) => {
+        if (task && idx > 0) {
+          try {
+            task.cancel()
+          } catch {}
+        }
+      })
+      renderTasksRef.current = []
       const canvases = document.querySelectorAll('[id^="pdf-page-"] canvas')
       canvases.forEach((canvas) => {
         delete canvas.dataset.rendered
       })
-      renderVisiblePages()
+      setTimeout(() => {
+        renderVisiblePages()
+      }, 30)
     }
   }, [scale, viewMode, pdfDoc, loading, renderVisiblePages])
 
@@ -405,6 +421,20 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       return () => container.removeEventListener('scroll', handleScroll)
     }
   }, [viewMode, handleScroll])
+
+  useEffect(() => {
+    if (viewMode === 'single' && pdfDoc && !loading) {
+      if (renderTasksRef.current[0]) {
+        try {
+          renderTasksRef.current[0].cancel()
+        } catch {}
+      }
+      const canvas = document.querySelector('.relative.shadow-lg canvas')
+      if (canvas) {
+        renderSinglePage(currentPage, canvas)
+      }
+    }
+  }, [currentPage, scale, viewMode, pdfDoc, loading, renderSinglePage])
 
   return (
     <TooltipProvider>
@@ -694,12 +724,11 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                 <div className="relative shadow-lg">
                   <canvas
                     ref={(canvas) => {
-                      if (canvas && pdfDoc && !canvas.dataset.rendered) {
+                      if (canvas && pdfDoc) {
                         canvas.dataset.rendered = 'true'
                         renderSinglePage(currentPage, canvas)
                       }
                     }}
-                    key={currentPage + '-' + scale}
                     className="bg-white"
                   />
                 </div>
