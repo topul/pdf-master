@@ -23,6 +23,7 @@ import {
   ListChecks,
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -48,6 +49,12 @@ export default function FormCreatePage() {
   const [radioGroup, setRadioGroup] = useState('')
   const [saving, setSaving] = useState(false)
   const [scale, setScale] = useState(1.5)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+    }
+  })
 
   const canvasRef = useRef(null)
   const overlayRef = useRef(null)

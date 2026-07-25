@@ -21,6 +21,7 @@ import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
@@ -40,6 +41,13 @@ function ExtractPage() {
   const [images, setImages] = useState([])
   const [imagePreviews, setImagePreviews] = useState([])
   const [imagesExtracted, setImagesExtracted] = useState(false)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const textScrollRef = useRef(null)
 

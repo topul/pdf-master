@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, Scan, Copy, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -21,6 +22,12 @@ export default function OcrPage() {
   const [pageTexts, setPageTexts] = useState({})
   const [language, setLanguage] = useState('chi_sim+eng')
   const [currentCanvas, setCurrentCanvas] = useState(null)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+    }
+  })
 
   const canvasRef = useRef(null)
 

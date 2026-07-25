@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, GitCompare, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -20,6 +21,15 @@ export default function ComparePage() {
   const [diffResults, setDiffResults] = useState(null)
   const [pageDiffs, setPageDiffs] = useState({})
   const [diffStats, setDiffStats] = useState(null)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile1(droppedFiles[0])
+      if (droppedFiles.length > 1) {
+        setFile2(droppedFiles[1])
+      }
+    }
+  })
 
   const canvasRef1 = useRef(null)
   const canvasRef2 = useRef(null)

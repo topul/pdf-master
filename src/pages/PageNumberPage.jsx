@@ -23,6 +23,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function PageNumberPage() {
   const [file, setFile] = useState(null)
@@ -32,6 +33,13 @@ function PageNumberPage() {
   const [processing, setProcessing] = useState(false)
   const [status, setStatus] = useState(null)
   const [renderingPreview, setRenderingPreview] = useState(false)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const [position, setPosition] = useState('bottom-center')
   const [fontSize, setFontSize] = useState(12)

@@ -12,8 +12,11 @@ import {
   RefreshCw,
   Settings,
   AlertCircle,
+  GripVertical,
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
+import { cn } from '@/lib/utils'
 
 export default function BatchRenamePage() {
   const t = useTranslations()
@@ -23,6 +26,52 @@ export default function BatchRenamePage() {
   const [useOriginalName, setUseOriginalName] = useState(false)
   const [preview, setPreview] = useState([])
   const [renamed, setRenamed] = useState(false)
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
+
+  useDragDrop((droppedFiles) => {
+    setFiles((prev) => [...prev, ...droppedFiles])
+  })
+
+  const handleDragStart = (e, index) => {
+    setDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e, index) => {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const newFiles = [...files]
+    const [removed] = newFiles.splice(dragIndex, 1)
+    newFiles.splice(index, 0, removed)
+    setFiles(newFiles)
+    setPreview([])
+    setRenamed(false)
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
 
   const handleSelectFiles = async () => {
     const result = await window.electronAPI.openFiles({
@@ -183,8 +232,22 @@ export default function BatchRenamePage() {
                 {files.map((file, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-muted/50"
+                    draggable={!renamed}
+                    onDragStart={(e) => handleDragStart(e, idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, idx)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      'group flex items-center gap-3 px-4 py-2 transition-all',
+                      dragIndex === idx && 'opacity-50',
+                      dragOverIndex === idx && dragIndex !== idx && 'border-t-2 border-t-primary pt-1.5',
+                      'hover:bg-muted/50 cursor-grab active:cursor-grabbing'
+                    )}
                   >
+                    <div className="text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <GripVertical className="h-4 w-4" />
+                    </div>
                     <FileText className="h-4 w-4 text-primary shrink-0" />
                     <div className="min-w-0 flex-1 truncate text-sm">
                       {file.name}

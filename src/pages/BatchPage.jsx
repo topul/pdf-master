@@ -12,6 +12,7 @@ import {
   AlignLeft,
   Play,
   Pause,
+  GripVertical,
 } from 'lucide-react'
 import { compressPdf, encryptPdf, extractPdfText } from '../utils/pdfUtils.js'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
@@ -42,9 +44,68 @@ function BatchPage() {
   const [status, setStatus] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [results, setResults] = useState({})
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
 
   const [compressMode, setCompressMode] = useState('recommended')
   const [encryptPassword, setEncryptPassword] = useState('')
+
+  useDragDrop((droppedFiles) => {
+    setFiles((prev) => [...prev, ...droppedFiles])
+    setStatus(null)
+  })
+
+  const handleDragStart = (e, index) => {
+    setDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e, index) => {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const newFiles = [...files]
+    const [removed] = newFiles.splice(dragIndex, 1)
+    newFiles.splice(index, 0, removed)
+    setFiles(newFiles)
+
+    const newResults = {}
+    const keys = Object.keys(results)
+    for (let i = 0; i < newFiles.length; i++) {
+      const oldIndex = i < dragIndex ? i : i - 1
+      if (i === index) {
+        newResults[i] = results[dragIndex]
+      } else if (keys.includes(oldIndex.toString())) {
+        newResults[i] = results[oldIndex]
+      }
+    }
+    setResults(newResults)
+
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
   const abortRef = useRef(false)
 
   const handleAddFiles = async () => {
@@ -265,7 +326,24 @@ function BatchPage() {
                 {files.map((file, index) => {
                   const r = results[index]
                   return (
-                    <div key={index} className="flex items-center gap-3 px-4 py-2.5">
+                    <div
+                      key={index}
+                      draggable={!processing}
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, index)}
+                      onDragEnd={handleDragEnd}
+                      className={cn(
+                        'group flex items-center gap-3 px-4 py-2.5 transition-all',
+                        dragIndex === index && 'opacity-50',
+                        dragOverIndex === index && dragIndex !== index && 'border-t-2 border-t-primary pt-1.5',
+                        'hover:bg-accent/50 cursor-grab active:cursor-grabbing'
+                      )}
+                    >
+                      <div className="text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <GripVertical className="h-4 w-4" />
+                      </div>
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted/50">
                         <FileText className="h-4 w-4 text-muted-foreground" />
                       </div>

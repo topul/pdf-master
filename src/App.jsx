@@ -30,6 +30,7 @@ import {
   FileSpreadsheet,
   Highlighter,
   ListChecks,
+  Settings as SettingsIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -64,6 +65,9 @@ import PdfToExcelPage from './pages/PdfToExcelPage.jsx'
 import AnnotatePage from './pages/AnnotatePage.jsx'
 import FormCreatePage from './pages/FormCreatePage.jsx'
 import BatchRenamePage from './pages/BatchRenamePage.jsx'
+import ViewerPage from './pages/ViewerPage.jsx'
+import SettingsPage from './pages/SettingsPage.jsx'
+import DragDropProvider from './components/DragDropProvider.jsx'
 
 function App() {
   const location = useLocation()
@@ -133,7 +137,8 @@ function App() {
   ]
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-muted/30 text-foreground">
+    <DragDropProvider>
+      <div className="flex h-screen w-screen overflow-hidden bg-muted/30 text-foreground">
       <aside
         className={cn(
           'flex h-full shrink-0 flex-col border-r bg-card transition-all duration-300 ease-out',
@@ -212,6 +217,13 @@ function App() {
         <div className="flex flex-col gap-1 border-t p-2">
           <div className={cn('flex', collapsed ? 'flex-col items-center gap-1' : 'items-center justify-between')}>
             <ThemeToggle />
+            <Link
+              to="/settings"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title={t.common.settings || '设置'}
+            >
+              <SettingsIcon className="h-[18px] w-[18px]" />
+            </Link>
             <div className="relative">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
@@ -293,10 +305,13 @@ function App() {
             <Route path="/form" element={<FormPage />} />
             <Route path="/bookmark" element={<BookmarkPage />} />
             <Route path="/crop" element={<CropPage />} />
+            <Route path="/viewer" element={<ViewerPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </div>
       </main>
     </div>
+    </DragDropProvider>
   )
 }
 

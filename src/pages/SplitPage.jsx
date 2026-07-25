@@ -11,6 +11,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function SplitPage() {
   const [file, setFile] = useState(null)
@@ -19,6 +20,13 @@ function SplitPage() {
   const [rangeInput, setRangeInput] = useState('')
   const [processing, setProcessing] = useState(false)
   const [status, setStatus] = useState(null)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({

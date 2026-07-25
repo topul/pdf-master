@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Upload, FileText, Eraser, Download, Eye } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import { saveAs } from 'file-saver'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -21,6 +22,12 @@ export default function WatermarkRemovePage() {
   const [removing, setRemoving] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [pageCount, setPageCount] = useState(0)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+    }
+  })
 
   const handleFileSelect = async (e) => {
     const selectedFile = e.target.files[0]

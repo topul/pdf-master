@@ -19,6 +19,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 import { cn } from '@/lib/utils'
 
 function BookmarkPage() {
@@ -32,6 +33,13 @@ function BookmarkPage() {
 
   const [newTitle, setNewTitle] = useState('')
   const [newPage, setNewPage] = useState('1')
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const [editingId, setEditingId] = useState(null)
   const [editTitle, setEditTitle] = useState('')

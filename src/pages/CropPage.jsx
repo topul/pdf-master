@@ -18,6 +18,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 import { cn } from '@/lib/utils'
 
 function CropPage() {
@@ -38,6 +39,13 @@ function CropPage() {
   const [marginBottom, setMarginBottom] = useState(0)
   const [marginLeft, setMarginLeft] = useState(0)
   const [marginRight, setMarginRight] = useState(0)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const previewRef = useRef(null)
 

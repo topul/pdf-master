@@ -8,6 +8,7 @@ import {
   Layers,
   RotateCcw,
   Sparkles,
+  GripVertical,
 } from 'lucide-react'
 import { mergePdfs, getPdfInfo } from '../utils/pdfUtils.js'
 import { Button } from '@/components/ui/button'
@@ -16,11 +17,57 @@ import { Badge } from '@/components/ui/badge'
 import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function MergePage() {
   const [files, setFiles] = useState([])
   const [processing, setProcessing] = useState(false)
   const [status, setStatus] = useState(null)
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
+
+  useDragDrop((droppedFiles) => {
+    setFiles((prev) => [...prev, ...droppedFiles])
+    setStatus(null)
+  })
+
+  const handleDragStart = (e, index) => {
+    setDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index)
+    }
+  }
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null)
+  }
+
+  const handleDrop = (e, index) => {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) {
+      setDragIndex(null)
+      setDragOverIndex(null)
+      return
+    }
+
+    const newFiles = [...files]
+    const [removed] = newFiles.splice(dragIndex, 1)
+    newFiles.splice(index, 0, removed)
+    setFiles(newFiles)
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
 
   const handleAddFiles = async () => {
     const result = await window.electronAPI.openFiles()
@@ -175,8 +222,22 @@ function MergePage() {
               {files.map((file, index) => (
                 <div
                   key={index}
-                  className="group flex items-center gap-3 rounded-md px-2 py-2 hover:bg-accent/50"
+                  draggable={!processing}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    'group flex items-center gap-3 rounded-md px-2 py-2 transition-all',
+                    dragIndex === index && 'opacity-50',
+                    dragOverIndex === index && dragIndex !== index && 'border-t-2 border-t-primary pt-1.5',
+                    'hover:bg-accent/50 cursor-grab active:cursor-grabbing'
+                  )}
                 >
+                  <div className="text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="h-4 w-4" />
+                  </div>
                   <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-medium text-primary">
                     {index + 1}
                   </div>

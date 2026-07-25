@@ -21,6 +21,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function TextPage() {
   const [file, setFile] = useState(null)
@@ -31,6 +32,13 @@ function TextPage() {
   const [processing, setProcessing] = useState(false)
   const [status, setStatus] = useState(null)
   const [renderingPreview, setRenderingPreview] = useState(false)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const [text, setText] = useState('在此输入文字')
   const [fontSize, setFontSize] = useState(16)

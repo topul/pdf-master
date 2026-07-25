@@ -16,6 +16,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function formatDate(dateStr) {
   if (!dateStr) return '-'
@@ -35,6 +36,13 @@ function MetadataPage() {
   const [status, setStatus] = useState(null)
   const [saving, setSaving] = useState(false)
   const [outputData, setOutputData] = useState(null)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({

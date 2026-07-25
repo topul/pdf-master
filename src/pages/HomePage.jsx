@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   FilePlus2,
   Scissors,
@@ -38,6 +38,7 @@ import { useContextMenu } from '../components/ContextMenu'
 
 function HomePage() {
   const t = useTranslations()
+  const navigate = useNavigate()
   const [history, setHistory] = useState([])
   const [contextFile, setContextFile] = useState(null)
   const [showConvert, setShowConvert] = useState(false)
@@ -61,11 +62,13 @@ function HomePage() {
   const handleOpenFile = async (file) => {
     const result = await window.electronAPI.readFile(file.path)
     if (result.success) {
-      window.dispatchEvent(new CustomEvent('file:open', { detail: {
+      const fileData = {
         path: file.path,
         name: file.name,
         data: result.data,
-      }}))
+        size: result.data.length,
+      }
+      navigate('/viewer', { state: { file: fileData } })
     }
   }
 

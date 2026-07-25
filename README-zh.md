@@ -52,6 +52,10 @@
 - 🖱️ **右键菜单** - 文件列表支持右键快速打开、删除操作
 - 🌐 **多语言支持** - 一键切换简体中文/英文界面
 - 📁 **分类折叠** - 首页工具分类默认折叠，节省空间，点击展开
+- 🖱️ **拖拽上传** - 将 PDF 文件直接拖入窗口即可加载，无需点击按钮选择
+- 🔀 **拖拽排序** - 合并、批量等页面支持拖拽调整文件顺序
+- 📖 **PDF 阅读器** - 内置 PDF 阅读器，支持目录导航、缩略图、缩放、全文搜索
+- ⚙️ **设置中心** - 统一管理主题、语言、历史记录数量、快捷键查看
 
 ### 特点
 - 🔒 **本地处理** - 所有操作均在本地完成，文件不上传云端，保护隐私
@@ -123,11 +127,17 @@ pdf-master/
 │   │   ├── SignaturePage.jsx # PDF 签名
 │   │   ├── FormPage.jsx      # 填写表单
 │   │   ├── BookmarkPage.jsx   # 书签管理
-│   │   └── CropPage.jsx      # 页面裁剪
+│   │   ├── CropPage.jsx      # 页面裁剪
+│   │   ├── ViewerPage.jsx    # PDF 阅读器
+│   │   └── SettingsPage.jsx  # 设置中心
 │   ├── components/
-│   │   └── ContextMenu.jsx    # 右键菜单组件
+│   │   ├── ContextMenu.jsx    # 右键菜单组件
+│   │   ├── DragDropProvider.jsx # 全局拖拽上传组件
+│   │   └── PdfViewer.jsx      # PDF 阅读器组件（渲染、缩放、搜索）
 │   ├── hooks/
-│   │   └── useFileSelector.js # 文件选择 Hook（自动记录历史）
+│   │   ├── useFileSelector.js # 文件选择 Hook（自动记录历史）
+│   │   ├── useDragDrop.js     # 拖拽文件处理 Hook
+│   │   └── useSettings.js     # 设置管理 Hook
 │   ├── styles/
 │   │   └── global.css         # 全局样式
 │   ├── utils/

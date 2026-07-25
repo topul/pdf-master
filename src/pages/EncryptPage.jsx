@@ -20,6 +20,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function EncryptPage() {
   const [file, setFile] = useState(null)
@@ -27,6 +28,13 @@ function EncryptPage() {
   const [status, setStatus] = useState(null)
   const [processing, setProcessing] = useState(false)
   const [outputData, setOutputData] = useState(null)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   // 加密表单
   const [userPassword, setUserPassword] = useState('')

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, globalShortcut } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, globalShortcut, webUtils } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
 const fsSync = require('fs')

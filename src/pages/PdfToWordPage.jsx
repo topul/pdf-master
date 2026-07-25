@@ -23,6 +23,7 @@ import {
   Eye,
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -38,6 +39,12 @@ export default function PdfToWordPage() {
     includePageBreaks: true,
     preserveLayout: true,
     fontSize: 24, // half-points, 12pt
+  })
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+    }
   })
 
   const handleFileSelect = async (e) => {

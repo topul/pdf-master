@@ -16,6 +16,7 @@ import {
   Table,
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -33,6 +34,12 @@ export default function PdfToExcelPage() {
     rowTolerance: 3, // Y 坐标容差
     colTolerance: 5, // X 坐标容差
     sheetPerPage: true,
+  })
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+    }
   })
 
   const handleFileSelect = async (e) => {

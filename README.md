@@ -52,6 +52,10 @@ A cross-platform PDF processing desktop application built with Electron + React,
 - 🖱️ **Context Menu** - Right-click file entries for quick open/delete actions
 - 🌐 **Multi-language** - Support Chinese (Simplified) and English with one-click switching
 - 📁 **Collapsible Categories** - Home page tools organized in collapsible sections for space saving
+- 🖱️ **Drag & Drop Upload** - Drag PDF files directly into the app window to load them instantly
+- 🔀 **Drag & Drop Reorder** - Drag files to reorder in merge/batch pages
+- 📖 **PDF Viewer** - Built-in PDF reader with outline navigation, thumbnails, zoom, and full-text search
+- ⚙️ **Settings Center** - Unified settings for theme, language, history limit, and shortcut overview
 
 ### Highlights
 - 🔒 **Local Processing** - All operations are done locally, files never uploaded to cloud, protecting privacy
@@ -123,11 +127,17 @@ pdf-master/
 │   │   ├── SignaturePage.jsx  # PDF signature
 │   │   ├── FormPage.jsx       # Fill form
 │   │   ├── BookmarkPage.jsx   # Bookmark management
-│   │   └── CropPage.jsx       # Page cropping
+│   │   ├── CropPage.jsx       # Page cropping
+│   │   ├── ViewerPage.jsx     # PDF reader/viewer
+│   │   └── SettingsPage.jsx   # Settings center
 │   ├── components/
-│   │   └── ContextMenu.jsx    # Right-click context menu component
+│   │   ├── ContextMenu.jsx    # Right-click context menu component
+│   │   ├── DragDropProvider.jsx # Global drag & drop upload provider
+│   │   └── PdfViewer.jsx      # PDF viewer component (render, zoom, search)
 │   ├── hooks/
-│   │   └── useFileSelector.js # File selection hook with history tracking
+│   │   ├── useFileSelector.js # File selection hook with history tracking
+│   │   ├── useDragDrop.js     # Drag & drop file handling hook
+│   │   └── useSettings.js     # Settings management hook
 │   ├── styles/
 │   │   └── global.css         # Global styles
 │   ├── utils/

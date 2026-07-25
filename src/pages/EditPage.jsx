@@ -30,6 +30,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function EditPage() {
   const [file, setFile] = useState(null)
@@ -43,6 +44,13 @@ function EditPage() {
   const [pageImages, setPageImages] = useState([])
   const [renderingPreview, setRenderingPreview] = useState(false)
   const [previewScale, setPreviewScale] = useState(0.5)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const renderPreview = async (data) => {
     if (!data) return

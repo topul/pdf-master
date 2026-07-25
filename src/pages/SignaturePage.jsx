@@ -20,6 +20,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 import { cn } from '@/lib/utils'
 
 function SignaturePage() {
@@ -38,6 +39,13 @@ function SignaturePage() {
 
   const [hasSignature, setHasSignature] = useState(false)
   const [signatures, setSignatures] = useState([])
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const canvasRef = useRef(null)
   const isDrawingRef = useRef(false)

@@ -8,6 +8,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
   writeFile: (filePath, data) => ipcRenderer.invoke('fs:writeFile', filePath, data),
   writeFiles: (files) => ipcRenderer.invoke('fs:writeFiles', files),
   readSystemFont: () => ipcRenderer.invoke('fs:readSystemFont'),
+  // 拖拽文件：读取文件内容和元信息
+  readDroppedFiles: async (fileList) => {
+    const files = Array.from(fileList)
+    const result = []
+    for (const file of files) {
+      try {
+        const arrayBuffer = await file.arrayBuffer()
+        const data = Array.from(new Uint8Array(arrayBuffer))
+        result.push({
+          name: file.name,
+          size: file.size,
+          data,
+          path: file.path || null,
+          lastModified: file.lastModified,
+        })
+      } catch (e) {
+        // 跳过无法读取的文件
+      }
+    }
+    return result
+  },
   // PDF 文字相关操作（在主进程执行，确保中文字体正常）
   pdfAddText: (fileData, options) => ipcRenderer.invoke('pdf:addText', { fileData, options }),
   pdfAddWatermark: (fileData, options) => ipcRenderer.invoke('pdf:addWatermark', { fileData, options }),

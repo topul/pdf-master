@@ -17,6 +17,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function FormPage() {
   const [file, setFile] = useState(null)
@@ -27,6 +28,13 @@ function FormPage() {
   const [fields, setFields] = useState([])
   const [fieldValues, setFieldValues] = useState({})
   const [formLoaded, setFormLoaded] = useState(false)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({

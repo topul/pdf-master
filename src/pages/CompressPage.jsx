@@ -21,6 +21,7 @@ import FileInfoCard from '@/components/FileInfoCard.jsx'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import { cn } from '@/lib/utils'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
@@ -37,6 +38,13 @@ function CompressPage() {
   const [status, setStatus] = useState(null)
   const [outputData, setOutputData] = useState(null)
   const [outputSize, setOutputSize] = useState(0)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({

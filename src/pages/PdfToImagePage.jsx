@@ -18,6 +18,7 @@ import PageHeader from '@/components/PageHeader.jsx'
 import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
+import useDragDrop from '../hooks/useDragDrop.js'
 
 function PdfToImagePage() {
   const [file, setFile] = useState(null)
@@ -29,6 +30,13 @@ function PdfToImagePage() {
   const [format, setFormat] = useState('png')
   const [quality, setQuality] = useState(90)
   const [scale, setScale] = useState(2)
+
+  useDragDrop((droppedFiles) => {
+    if (droppedFiles.length > 0) {
+      setFile(droppedFiles[0])
+      setStatus(null)
+    }
+  })
 
   const handleSelectFile = async () => {
     const result = await window.electronAPI.openFiles({
