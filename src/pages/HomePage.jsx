@@ -74,10 +74,10 @@ function HomePage() {
   const { renderMenu } = useContextMenu(menuItems, [contextFile])
 
   const stats = [
-    { value: '27+', label: t.home?.features || '功能' },
-    { value: '3', label: 'Platforms' },
-    { value: '100%', label: 'Local' },
-    { value: '0', label: 'Uploads' },
+    { value: '27+', label: t.home?.statFeatures || t.home?.features || '功能' },
+    { value: '3', label: t.home?.statPlatforms || 'Platforms' },
+    { value: '100%', label: t.home?.statLocal || 'Local' },
+    { value: '0', label: t.home?.statUploads || 'Uploads' },
   ]
 
   return (
