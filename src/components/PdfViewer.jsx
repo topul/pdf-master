@@ -35,10 +35,11 @@ async function loadPdfJs() {
 
 function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const containerRef = useRef(null)
+  const viewportRef = useRef(null)
   const [pdfDoc, setPdfDoc] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
-  const [scale, setScale] = useState(1.5)
+  const [scale, setScale] = useState(1)
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarTab, setSidebarTab] = useState('outline')
@@ -50,7 +51,9 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const [searching, setSearching] = useState(false)
   const [fitMode, setFitMode] = useState('width')
   const [viewMode, setViewMode] = useState('scroll')
-  const [renderKey, setRenderKey] = useState(0)
+  const pageSizeRef = useRef({ width: 0, height: 0 })
+  const renderTasksRef = useRef({})
+  const renderingRef = useRef({})
   const isProgrammaticScroll = useRef(false)
 
   const loadPdf = useCallback(async () => {
@@ -63,9 +66,12 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       const pdf = await loadingTask.promise
       setPdfDoc(pdf)
       setTotalPages(pdf.numPages)
-      setCurrentPage(1)
+
+      const firstPage = await pdf.getPage(1)
+      const vp = firstPage.getViewport({ scale: 1 })
+      pageSizeRef.current = { width: vp.width, height: vp.height }
+
       setLoading(false)
-      setRenderKey((k) => k + 1)
 
       try {
         const outlineData = await pdf.getOutline()
@@ -85,8 +91,60 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
     loadPdf()
   }, [loadPdf])
 
-  const renderPageToCanvas = useCallback(async (pageNum, canvas) => {
+  useEffect(() => {
+    if (!loading && pdfDoc && fitMode === 'width' && containerRef.current) {
+      const containerWidth = containerRef.current.clientWidth - 40
+      const newScale = containerWidth / pageSizeRef.current.width
+      setScale(newScale)
+    }
+  }, [loading, pdfDoc, fitMode, sidebarOpen])
+
+  const fitWidth = useCallback(() => {
+    if (!containerRef.current || !pageSizeRef.current.width) return
+    const containerWidth = containerRef.current.clientWidth - 40
+    const newScale = containerWidth / pageSizeRef.current.width
+    setScale(newScale)
+    setFitMode('width')
+  }, [])
+
+  const fitPage = useCallback(() => {
+    if (!containerRef.current || !pageSizeRef.current.width) return
+    const containerWidth = containerRef.current.clientWidth - 40
+    const containerHeight = containerRef.current.clientHeight - 40
+    const scaleX = containerWidth / pageSizeRef.current.width
+    const scaleY = containerHeight / pageSizeRef.current.height
+    const newScale = Math.min(scaleX, scaleY)
+    setScale(newScale)
+    setFitMode('page')
+  }, [])
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (fitMode === 'width') {
+        fitWidth()
+      } else if (fitMode === 'page') {
+        fitPage()
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [fitMode, fitWidth, fitPage])
+
+  const renderPage = useCallback(async (pageNum, canvas) => {
     if (!pdfDoc || !canvas) return
+    const key = String(pageNum)
+
+    if (renderingRef.current[key]) {
+      return
+    }
+
+    if (renderTasksRef.current[key]) {
+      try {
+        renderTasksRef.current[key].cancel()
+      } catch {}
+    }
+
+    renderingRef.current[key] = true
     try {
       const page = await pdfDoc.getPage(pageNum)
       const viewport = page.getViewport({ scale })
@@ -99,14 +157,18 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       canvas.style.height = viewport.height + 'px'
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      await page.render({
+      const task = page.render({
         canvasContext: context,
         viewport,
-      }).promise
+      })
+      renderTasksRef.current[key] = task
+      await task.promise
     } catch (error) {
       if (error.name !== 'RenderingCancelledException') {
         console.error(`Failed to render page ${pageNum}:`, error)
       }
+    } finally {
+      renderingRef.current[key] = false
     }
   }, [pdfDoc, scale])
 
@@ -124,35 +186,44 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
             const pageNum = parseInt(entry.target.dataset.page)
             if (canvas && !canvas.dataset.rendered) {
               canvas.dataset.rendered = 'true'
-              renderPageToCanvas(pageNum, canvas)
+              renderPage(pageNum, canvas)
             }
           }
         })
       },
       {
         root: container,
-        rootMargin: '300px 0px 300px 0px',
+        rootMargin: '400px 0px 400px 0px',
         threshold: 0,
       }
     )
 
-    const pageElements = container.querySelectorAll('[data-page]')
-    pageElements.forEach((el) => observer.observe(el))
+    const timer = setTimeout(() => {
+      const pageElements = container.querySelectorAll('[data-page]')
+      pageElements.forEach((el) => observer.observe(el))
+    }, 50)
 
-    return () => observer.disconnect()
-  }, [viewMode, pdfDoc, loading, renderKey, renderPageToCanvas])
+    return () => {
+      clearTimeout(timer)
+      observer.disconnect()
+    }
+  }, [viewMode, pdfDoc, loading, scale, renderPage])
 
   const handleScroll = useCallback(() => {
     if (isProgrammaticScroll.current) return
-    if (viewMode !== 'scroll' || !containerRef.current) return
+    if (viewMode !== 'scroll' || !viewportRef.current) return
     const container = containerRef.current
+    if (!container) return
     const scrollTop = container.scrollTop + container.clientHeight / 3
 
     let newPage = 1
     for (let i = 1; i <= totalPages; i++) {
       const pageEl = document.getElementById(`pdf-page-${i}`)
-      if (pageEl && pageEl.offsetTop - container.offsetTop <= scrollTop) {
-        newPage = i
+      if (pageEl) {
+        const rect = pageEl.offsetTop - viewportRef.current.offsetTop
+        if (rect <= scrollTop) {
+          newPage = i
+        }
       }
     }
     if (newPage !== currentPage) {
@@ -168,21 +239,22 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       isProgrammaticScroll.current = true
       const pageEl = document.getElementById(`pdf-page-${p}`)
       if (pageEl) {
+        const targetTop = pageEl.offsetTop - (viewportRef.current?.offsetTop || 0) - 20
         containerRef.current.scrollTo({
-          top: pageEl.offsetTop - containerRef.current.offsetTop - 20,
+          top: targetTop,
           behavior: 'smooth',
         })
         const canvas = pageEl.querySelector('canvas')
         if (canvas && !canvas.dataset.rendered) {
           canvas.dataset.rendered = 'true'
-          renderPageToCanvas(p, canvas)
+          renderPage(p, canvas)
         }
       }
       setTimeout(() => {
         isProgrammaticScroll.current = false
-      }, 500)
+      }, 600)
     }
-  }, [totalPages, viewMode, renderPageToCanvas])
+  }, [totalPages, viewMode, renderPage])
 
   const handlePrevPage = () => goToPage(currentPage - 1)
   const handleNextPage = () => goToPage(currentPage + 1)
@@ -196,50 +268,6 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
     setFitMode(null)
     setScale((s) => Math.max(0.25, s - 0.25))
   }
-
-  const fitWidth = useCallback(() => {
-    if (!containerRef.current || !pdfDoc) return
-    const containerWidth = containerRef.current.clientWidth - 40
-    pdfDoc.getPage(1).then((page) => {
-      const viewport = page.getViewport({ scale: 1 })
-      const newScale = containerWidth / viewport.width
-      setScale(newScale)
-      setFitMode('width')
-    })
-  }, [pdfDoc])
-
-  const fitPage = useCallback(() => {
-    if (!containerRef.current || !pdfDoc) return
-    const containerHeight = containerRef.current.clientHeight - 40
-    const containerWidth = containerRef.current.clientWidth - 40
-    pdfDoc.getPage(1).then((page) => {
-      const viewport = page.getViewport({ scale: 1 })
-      const scaleX = containerWidth / viewport.width
-      const scaleY = containerHeight / viewport.height
-      const newScale = Math.min(scaleX, scaleY)
-      setScale(newScale)
-      setFitMode('page')
-    })
-  }, [pdfDoc])
-
-  useEffect(() => {
-    if (pdfDoc && !loading && fitMode === 'width') {
-      const timer = setTimeout(fitWidth, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [pdfDoc, loading, fitMode, fitWidth])
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (fitMode === 'width') {
-        fitWidth()
-      } else if (fitMode === 'page') {
-        fitPage()
-      }
-    }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [fitMode, fitWidth, fitPage])
 
   const searchText = useCallback(async () => {
     if (!pdfDoc || !searchQuery.trim()) return
@@ -294,30 +322,26 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const navigateToDest = async (dest) => {
     if (!pdfDoc) return
     try {
-      let destObj = dest
+      let pageIndex = null
 
       if (typeof dest === 'string') {
         const explicitDest = await pdfDoc.getDestination(dest)
-        if (explicitDest) {
-          destObj = explicitDest
+        if (explicitDest && Array.isArray(explicitDest)) {
+          pageIndex = explicitDest[0]
+          if (pageIndex && typeof pageIndex !== 'number' && pageIndex.pageIndex != null) {
+            pageIndex = pageIndex.pageIndex
+          }
         }
-      }
-
-      let pageIndex = null
-
-      if (Array.isArray(destObj)) {
-        if (typeof destObj[0] === 'number') {
-          pageIndex = destObj[0]
-        } else if (destObj[0] && typeof destObj[0].pageIndex === 'number') {
-          pageIndex = destObj[0].pageIndex
+      } else if (Array.isArray(dest)) {
+        pageIndex = dest[0]
+        if (pageIndex && typeof pageIndex !== 'number' && pageIndex.pageIndex != null) {
+          pageIndex = pageIndex.pageIndex
         }
+      } else if (dest && typeof dest.pageIndex === 'number') {
+        pageIndex = dest.pageIndex
       }
 
-      if (pageIndex == null && destObj && typeof destObj.pageIndex === 'number') {
-        pageIndex = destObj.pageIndex
-      }
-
-      if (pageIndex != null) {
+      if (typeof pageIndex === 'number') {
         const pageNum = pageIndex + 1
         goToPage(pageNum)
       }
@@ -328,7 +352,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
 
   const renderOutlineItem = (item, depth = 0) => {
     return (
-      <div key={item.title || Math.random()}>
+      <div key={item.title + '-' + depth + '-' + Math.random()}>
         <button
           className="w-full truncate rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
@@ -371,15 +395,11 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   }, [sidebarTab, pdfDoc, loadThumbnails])
 
   const toggleViewMode = () => {
-    const newMode = viewMode === 'scroll' ? 'single' : 'scroll'
-    setViewMode(newMode)
+    setViewMode((m) => (m === 'scroll' ? 'single' : 'scroll'))
   }
 
-  useEffect(() => {
-    if (viewMode === 'scroll') {
-      setRenderKey((k) => k + 1)
-    }
-  }, [viewMode, scale])
+  const pageWidth = pageSizeRef.current.width * scale
+  const pageHeight = pageSizeRef.current.height * scale
 
   return (
     <TooltipProvider>
@@ -412,7 +432,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
               {sidebarTab === 'outline' && (
                 outline.length > 0 ? (
                   <div className="space-y-0.5">
-                    {outline.map((item) => renderOutlineItem(item))}
+                    {outline.map((item, idx) => renderOutlineItem(item, 0))}
                   </div>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center py-8 text-center text-xs text-muted-foreground">
@@ -447,7 +467,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
         )}
 
         <div className="flex flex-1 flex-col">
-          <div className="flex items-center justify-between gap-2 border-b bg-card px-3 py-2">
+          <div className="flex items-center justify-between gap-2 border-b bg-card px-3 py-2 z-10">
             <div className="flex items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -651,9 +671,10 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
               </div>
             ) : viewMode === 'scroll' ? (
               <div
+                ref={viewportRef}
                 className="mx-auto flex flex-col items-center gap-4"
-                style={{ maxWidth: '100%' }}
-                key={`scroll-${renderKey}`}
+                style={{ width: pageWidth > 0 ? pageWidth : 'auto', maxWidth: '100%' }}
+                key={`scroll-${scale}`}
               >
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                   <div
@@ -661,19 +682,32 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                     id={`pdf-page-${pageNum}`}
                     data-page={pageNum}
                     className="relative shadow-lg bg-white"
+                    style={{
+                      width: pageWidth > 0 ? pageWidth : 'auto',
+                      height: pageHeight > 0 ? pageHeight : 'auto',
+                    }}
                   >
-                    <canvas className="block" />
+                    <canvas
+                      className="block"
+                      style={{ width: '100%', height: '100%' }}
+                    />
                   </div>
                 ))}
               </div>
             ) : (
               <div className="flex justify-center" key={`single-${currentPage}-${scale}`}>
-                <div className="relative shadow-lg">
+                <div
+                  className="relative shadow-lg bg-white"
+                  style={{
+                    width: pageWidth > 0 ? pageWidth : 'auto',
+                    height: pageHeight > 0 ? pageHeight : 'auto',
+                  }}
+                >
                   <SinglePageCanvas
                     pdfDoc={pdfDoc}
                     pageNum={currentPage}
                     scale={scale}
-                    renderPageToCanvas={renderPageToCanvas}
+                    renderPage={renderPage}
                   />
                 </div>
               </div>
@@ -685,16 +719,16 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   )
 }
 
-function SinglePageCanvas({ pdfDoc, pageNum, scale, renderPageToCanvas }) {
+function SinglePageCanvas({ pdfDoc, pageNum, scale, renderPage }) {
   const canvasRef = useRef(null)
 
   useEffect(() => {
     if (canvasRef.current && pdfDoc) {
-      renderPageToCanvas(pageNum, canvasRef.current)
+      renderPage(pageNum, canvasRef.current)
     }
-  }, [pdfDoc, pageNum, scale, renderPageToCanvas])
+  }, [pdfDoc, pageNum, scale, renderPage])
 
-  return <canvas ref={canvasRef} className="bg-white" />
+  return <canvas ref={canvasRef} className="block w-full h-full" />
 }
 
 export default PdfViewer
