@@ -38,17 +38,17 @@ function SettingsPage() {
   ]
 
   const shortcuts = [
-    { keys: ['Ctrl', 'O'], desc: '打开文件' },
-    { keys: ['Ctrl', 'N'], desc: '新建窗口' },
-    { keys: ['Ctrl', 'Home'], desc: '返回首页' },
-    { keys: ['Ctrl', '1'], desc: '合并 PDF' },
-    { keys: ['Ctrl', '2'], desc: '拆分 PDF' },
-    { keys: ['Ctrl', '3'], desc: '编辑 PDF' },
-    { keys: ['Ctrl', '4'], desc: '图片转 PDF' },
-    { keys: ['Ctrl', '5'], desc: 'PDF 转图片' },
-    { keys: ['Ctrl', '6'], desc: 'PDF 压缩' },
-    { keys: ['Ctrl', '7'], desc: '提取内容' },
-    { keys: ['Ctrl', '8'], desc: '添加文字' },
+    { keys: ['Ctrl', 'O'], desc: t.shortcuts?.openFile || '打开文件' },
+    { keys: ['Ctrl', 'N'], desc: t.shortcuts?.newWindow || '新建窗口' },
+    { keys: ['Ctrl', 'Home'], desc: t.shortcuts?.goHome || '返回首页' },
+    { keys: ['Ctrl', '1'], desc: t.common.merge },
+    { keys: ['Ctrl', '2'], desc: t.common.split },
+    { keys: ['Ctrl', '3'], desc: t.common.edit },
+    { keys: ['Ctrl', '4'], desc: t.common.imageToPdf },
+    { keys: ['Ctrl', '5'], desc: t.common.pdfToImage },
+    { keys: ['Ctrl', '6'], desc: t.common.compress },
+    { keys: ['Ctrl', '7'], desc: t.common.extract },
+    { keys: ['Ctrl', '8'], desc: t.common.text },
   ]
 
   const [historyLimit, setHistoryLimit] = useState(20)
@@ -65,16 +65,16 @@ function SettingsPage() {
     <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-5 px-6 py-6 lg:px-8">
       <PageHeader
         icon={Settings}
-        title="设置"
-        description="自定义 PDF Master 的外观和行为"
+        title={t.settings?.title || '设置'}
+        description={t.settings?.description || '自定义 PDF Master 的外观和行为'}
       />
 
       <Tabs defaultValue="general" className="flex-1">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">常规</TabsTrigger>
-          <TabsTrigger value="appearance">外观</TabsTrigger>
-          <TabsTrigger value="shortcuts">快捷键</TabsTrigger>
-          <TabsTrigger value="about">关于</TabsTrigger>
+          <TabsTrigger value="general">{t.settings?.general || '常规'}</TabsTrigger>
+          <TabsTrigger value="appearance">{t.settings?.appearance || '外观'}</TabsTrigger>
+          <TabsTrigger value="shortcuts">{t.settings?.shortcuts || '快捷键'}</TabsTrigger>
+          <TabsTrigger value="about">{t.settings?.about || '关于'}</TabsTrigger>
         </TabsList>
 
         <div className="mt-4 flex-1 overflow-y-auto">
@@ -84,7 +84,7 @@ function SettingsPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <Globe className="h-4 w-4" />
-                    语言
+                    {t.settings?.language || '语言'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -114,12 +114,12 @@ function SettingsPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <History className="h-4 w-4" />
-                    历史记录
+                    {t.settings?.history || '历史记录'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="history-limit">最大记录数</Label>
+                    <Label htmlFor="history-limit">{t.settings?.maxHistory || '最大记录数'}</Label>
                     <Input
                       id="history-limit"
                       type="number"
@@ -130,7 +130,7 @@ function SettingsPage() {
                       className="w-32"
                     />
                     <p className="text-xs text-muted-foreground">
-                      设置为 0 则不保存历史记录
+                      {t.settings?.historyHint || '设置为 0 则不保存历史记录'}
                     </p>
                   </div>
                 </CardContent>
@@ -142,9 +142,9 @@ function SettingsPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Palette className="h-4 w-4" />
-                  主题
-                </CardTitle>
+                    <Palette className="h-4 w-4" />
+                    {t.settings?.theme || '主题'}
+                  </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-2">
@@ -175,9 +175,9 @@ function SettingsPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Keyboard className="h-4 w-4" />
-                  全局快捷键
-                </CardTitle>
+                    <Keyboard className="h-4 w-4" />
+                    {t.settings?.globalShortcuts || '全局快捷键'}
+                  </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="divide-y">
@@ -213,9 +213,11 @@ function SettingsPage() {
                   <Settings className="h-8 w-8" />
                 </div>
                 <h3 className="text-lg font-semibold">PDF Master</h3>
-                <p className="mt-1 text-sm text-muted-foreground">版本 1.9.0</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {t.settings?.version || '版本'} 1.9.0
+                </p>
                 <p className="mt-4 max-w-sm text-xs text-muted-foreground">
-                  一款完全在本地运行的 PDF 处理工具集，保护您的隐私安全。
+                  {t.settings?.aboutDesc || '一款完全在本地运行的 PDF 处理工具集，保护您的隐私安全。'}
                 </p>
                 <div className="mt-6 flex gap-2">
                   <Button
@@ -223,7 +225,7 @@ function SettingsPage() {
                     size="sm"
                     onClick={() => window.electronAPI?.checkUpdate?.()}
                   >
-                    检查更新
+                    {t.settings?.checkUpdate || '检查更新'}
                   </Button>
                   <Button
                     variant="outline"
@@ -234,7 +236,7 @@ function SettingsPage() {
                       )
                     }
                   >
-                    开源地址
+                    {t.settings?.openSource || '开源地址'}
                   </Button>
                 </div>
               </CardContent>

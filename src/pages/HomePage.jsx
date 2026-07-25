@@ -100,7 +100,7 @@ function HomePage() {
       title: t.common.viewer || '阅读 PDF',
       description: t.home.feature4 || '阅读、浏览、搜索 PDF 文档',
       accent: 'from-emerald-500 to-teal-600',
-      tag: '新功能',
+      tag: t.home.newFeature || '新功能',
     },
     {
       path: '/merge',
@@ -108,7 +108,7 @@ function HomePage() {
       title: t.common.merge,
       description: t.home.feature1,
       accent: 'from-blue-500 to-indigo-600',
-      tag: '常用',
+      tag: t.home.popular || '常用',
     },
     {
       path: '/split',
@@ -116,7 +116,7 @@ function HomePage() {
       title: t.common.split,
       description: t.home.feature2,
       accent: 'from-rose-500 to-pink-600',
-      tag: '常用',
+      tag: t.home.popular || '常用',
     },
     {
       path: '/edit',
@@ -124,7 +124,7 @@ function HomePage() {
       title: t.common.edit,
       description: t.home.feature3,
       accent: 'from-amber-500 to-orange-600',
-      tag: '可视化',
+      tag: t.home.visual || '可视化',
     },
   ]
 
