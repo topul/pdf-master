@@ -75,6 +75,40 @@ function App() {
   // 注册快捷键
   useShortcuts()
 
+  // 全局快捷键打开文件处理
+  React.useEffect(() => {
+    const handleOpenFile = async () => {
+      const result = await window.electronAPI?.openFiles?.({
+        properties: ['openFile'],
+        filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+      })
+      if (!result || result.canceled) return
+
+      const filePath = result.filePaths[0]
+      const fileResult = await window.electronAPI?.readFile?.(filePath)
+      if (fileResult?.success) {
+        const fileName = filePath.split(/[\\/]/).pop()
+        window.dispatchEvent(
+          new CustomEvent('files:dropped', {
+            detail: {
+              files: [
+                {
+                  path: filePath,
+                  name: fileName,
+                  data: fileResult.data,
+                  size: fileResult.data.length,
+                },
+              ],
+            },
+          })
+        )
+      }
+    }
+
+    window.addEventListener('shortcut:openFile', handleOpenFile)
+    return () => window.removeEventListener('shortcut:openFile', handleOpenFile)
+  }, [])
+
   const menuGroups = [
     {
       label: t.nav.core,

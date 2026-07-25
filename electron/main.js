@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, globalShortcut, webUtils } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, globalShortcut, webUtils, shell } = require('electron')
 const path = require('path')
 const fs = require('fs/promises')
 const fsSync = require('fs')
@@ -134,6 +134,28 @@ ipcMain.handle('app:openDevTools', async () => {
     return { success: true }
   }
   return { success: false, error: 'Not available in production or window not ready' }
+})
+
+// 打开外部链接（开源地址）
+ipcMain.handle('app:openExternal', async (event, url) => {
+  try {
+    await shell.openExternal(url)
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+// 检查更新（暂未实现，显示提示）
+ipcMain.handle('app:checkUpdate', async () => {
+  await dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: '检查更新',
+    message: '当前版本: ' + app.getVersion(),
+    detail: '更新功能正在开发中，敬请期待！',
+    buttons: ['确定'],
+  })
+  return { success: true, currentVersion: app.getVersion() }
 })
 
 ipcMain.handle('dialog:openFiles', async (event, options) => {

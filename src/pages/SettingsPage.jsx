@@ -41,9 +41,14 @@ function SettingsPage() {
     { keys: ['Ctrl', 'O'], desc: '打开文件' },
     { keys: ['Ctrl', 'N'], desc: '新建窗口' },
     { keys: ['Ctrl', 'Home'], desc: '返回首页' },
-    { keys: ['Ctrl', '1'], desc: '跳转到第 1 个功能页' },
-    { keys: ['Ctrl', '2~9'], desc: '跳转到对应功能页' },
-    { keys: ['F12'], desc: '开发者工具（开发环境）' },
+    { keys: ['Ctrl', '1'], desc: '合并 PDF' },
+    { keys: ['Ctrl', '2'], desc: '拆分 PDF' },
+    { keys: ['Ctrl', '3'], desc: '编辑 PDF' },
+    { keys: ['Ctrl', '4'], desc: '图片转 PDF' },
+    { keys: ['Ctrl', '5'], desc: 'PDF 转图片' },
+    { keys: ['Ctrl', '6'], desc: 'PDF 压缩' },
+    { keys: ['Ctrl', '7'], desc: '提取内容' },
+    { keys: ['Ctrl', '8'], desc: '添加文字' },
   ]
 
   const [historyLimit, setHistoryLimit] = useState(20)
@@ -213,10 +218,22 @@ function SettingsPage() {
                   一款完全在本地运行的 PDF 处理工具集，保护您的隐私安全。
                 </p>
                 <div className="mt-6 flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.electronAPI?.checkUpdate?.()}
+                  >
                     检查更新
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      window.electronAPI?.openExternal?.(
+                        'https://github.com/topul/pdf-master'
+                      )
+                    }
+                  >
                     开源地址
                   </Button>
                 </div>

@@ -50,4 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('shortcut:goHome')
     ipcRenderer.removeAllListeners('shortcut:gotoPage')
   },
+  // 应用操作
+  openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
+  checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),
 })
