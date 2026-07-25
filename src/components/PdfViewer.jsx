@@ -35,7 +35,6 @@ async function loadPdfJs() {
 
 function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const containerRef = useRef(null)
-  const pagesContainerRef = useRef(null)
   const [pdfDoc, setPdfDoc] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
@@ -51,10 +50,8 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const [searching, setSearching] = useState(false)
   const [fitMode, setFitMode] = useState('width')
   const [viewMode, setViewMode] = useState('scroll')
-  const pageCanvasesRef = useRef([])
-  const renderTasksRef = useRef([])
-  const isScrollingRef = useRef(false)
-  const pageSizeRef = useRef({ width: 0, height: 0 })
+  const [renderKey, setRenderKey] = useState(0)
+  const isProgrammaticScroll = useRef(false)
 
   const loadPdf = useCallback(async () => {
     if (!fileData) return
@@ -68,6 +65,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       setTotalPages(pdf.numPages)
       setCurrentPage(1)
       setLoading(false)
+      setRenderKey((k) => k + 1)
 
       try {
         const outlineData = await pdf.getOutline()
@@ -76,14 +74,6 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
         }
       } catch {
         setOutline([])
-      }
-
-      try {
-        const firstPage = await pdf.getPage(1)
-        const viewport = firstPage.getViewport({ scale: 1 })
-        pageSizeRef.current = { width: viewport.width, height: viewport.height }
-      } catch {
-        // ignore
       }
     } catch (error) {
       console.error('Failed to load PDF:', error)
@@ -95,14 +85,8 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
     loadPdf()
   }, [loadPdf])
 
-  const renderSinglePage = useCallback(async (pageNum, canvas) => {
+  const renderPageToCanvas = useCallback(async (pageNum, canvas) => {
     if (!pdfDoc || !canvas) return
-    if (renderTasksRef.current[pageNum]) {
-      try {
-        renderTasksRef.current[pageNum].cancel()
-      } catch {}
-      renderTasksRef.current[pageNum] = null
-    }
     try {
       const page = await pdfDoc.getPage(pageNum)
       const viewport = page.getViewport({ scale })
@@ -115,12 +99,10 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       canvas.style.height = viewport.height + 'px'
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      const renderTask = page.render({
+      await page.render({
         canvasContext: context,
         viewport,
-      })
-      renderTasksRef.current[pageNum] = renderTask
-      await renderTask.promise
+      }).promise
     } catch (error) {
       if (error.name !== 'RenderingCancelledException') {
         console.error(`Failed to render page ${pageNum}:`, error)
@@ -128,56 +110,48 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
     }
   }, [pdfDoc, scale])
 
-  const renderVisiblePages = useCallback(() => {
-    if (!pdfDoc || !pagesContainerRef.current || viewMode !== 'scroll') return
-    const container = pagesContainerRef.current
-    const containerTop = container.scrollTop
-    const containerBottom = containerTop + container.clientHeight
-
-    for (let i = 1; i <= totalPages; i++) {
-      const pageEl = document.getElementById(`pdf-page-${i}`)
-      if (!pageEl) continue
-      const pageTop = pageEl.offsetTop
-      const pageBottom = pageTop + pageEl.offsetHeight
-
-      if (pageBottom >= containerTop - 500 && pageTop <= containerBottom + 500) {
-        const canvas = pageEl.querySelector('canvas')
-        if (canvas && !canvas.dataset.rendered) {
-          canvas.dataset.rendered = 'true'
-          renderSinglePage(i, canvas)
-        }
-      }
-    }
-  }, [pdfDoc, totalPages, viewMode, renderSinglePage])
-
   useEffect(() => {
-    if (pdfDoc && viewMode === 'scroll' && !loading) {
-      const timer = setTimeout(() => {
-        renderVisiblePages()
-      }, 50)
-      return () => clearTimeout(timer)
-    }
-  }, [pdfDoc, viewMode, loading, renderVisiblePages, scale])
+    if (viewMode === 'single' || !pdfDoc || loading) return
+
+    const container = containerRef.current
+    if (!container) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const canvas = entry.target.querySelector('canvas')
+            const pageNum = parseInt(entry.target.dataset.page)
+            if (canvas && !canvas.dataset.rendered) {
+              canvas.dataset.rendered = 'true'
+              renderPageToCanvas(pageNum, canvas)
+            }
+          }
+        })
+      },
+      {
+        root: container,
+        rootMargin: '300px 0px 300px 0px',
+        threshold: 0,
+      }
+    )
+
+    const pageElements = container.querySelectorAll('[data-page]')
+    pageElements.forEach((el) => observer.observe(el))
+
+    return () => observer.disconnect()
+  }, [viewMode, pdfDoc, loading, renderKey, renderPageToCanvas])
 
   const handleScroll = useCallback(() => {
-    if (isScrollingRef.current) return
-    isScrollingRef.current = true
-    requestAnimationFrame(() => {
-      renderVisiblePages()
-      updateCurrentPageFromScroll()
-      isScrollingRef.current = false
-    })
-  }, [renderVisiblePages])
-
-  const updateCurrentPageFromScroll = useCallback(() => {
-    if (!pagesContainerRef.current || viewMode !== 'scroll') return
-    const container = pagesContainerRef.current
+    if (isProgrammaticScroll.current) return
+    if (viewMode !== 'scroll' || !containerRef.current) return
+    const container = containerRef.current
     const scrollTop = container.scrollTop + container.clientHeight / 3
 
     let newPage = 1
     for (let i = 1; i <= totalPages; i++) {
       const pageEl = document.getElementById(`pdf-page-${i}`)
-      if (pageEl && pageEl.offsetTop <= scrollTop) {
+      if (pageEl && pageEl.offsetTop - container.offsetTop <= scrollTop) {
         newPage = i
       }
     }
@@ -190,16 +164,25 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
     const p = Math.max(1, Math.min(totalPages, page))
     setCurrentPage(p)
 
-    if (viewMode === 'scroll' && pagesContainerRef.current) {
+    if (viewMode === 'scroll' && containerRef.current) {
+      isProgrammaticScroll.current = true
       const pageEl = document.getElementById(`pdf-page-${p}`)
       if (pageEl) {
-        pagesContainerRef.current.scrollTo({
-          top: pageEl.offsetTop - 20,
+        containerRef.current.scrollTo({
+          top: pageEl.offsetTop - containerRef.current.offsetTop - 20,
           behavior: 'smooth',
         })
+        const canvas = pageEl.querySelector('canvas')
+        if (canvas && !canvas.dataset.rendered) {
+          canvas.dataset.rendered = 'true'
+          renderPageToCanvas(p, canvas)
+        }
       }
+      setTimeout(() => {
+        isProgrammaticScroll.current = false
+      }, 500)
     }
-  }, [totalPages, viewMode])
+  }, [totalPages, viewMode, renderPageToCanvas])
 
   const handlePrevPage = () => goToPage(currentPage - 1)
   const handleNextPage = () => goToPage(currentPage + 1)
@@ -215,41 +198,36 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   }
 
   const fitWidth = useCallback(() => {
-    if (!pagesContainerRef.current && viewMode === 'single') return
-    const container = pagesContainerRef.current || containerRef.current
-    if (!container) return
-    const containerWidth = container.clientWidth - 40
-    if (!pdfDoc) return
+    if (!containerRef.current || !pdfDoc) return
+    const containerWidth = containerRef.current.clientWidth - 40
     pdfDoc.getPage(1).then((page) => {
       const viewport = page.getViewport({ scale: 1 })
       const newScale = containerWidth / viewport.width
       setScale(newScale)
       setFitMode('width')
     })
-  }, [pdfDoc, viewMode])
+  }, [pdfDoc])
 
   const fitPage = useCallback(() => {
-    if (!pagesContainerRef.current && viewMode === 'single') return
-    const container = pagesContainerRef.current || containerRef.current
-    if (!container || !pdfDoc) return
+    if (!containerRef.current || !pdfDoc) return
+    const containerHeight = containerRef.current.clientHeight - 40
+    const containerWidth = containerRef.current.clientWidth - 40
     pdfDoc.getPage(1).then((page) => {
       const viewport = page.getViewport({ scale: 1 })
-      const containerWidth = container.clientWidth - 40
-      const containerHeight = container.clientHeight - 40
       const scaleX = containerWidth / viewport.width
       const scaleY = containerHeight / viewport.height
       const newScale = Math.min(scaleX, scaleY)
       setScale(newScale)
       setFitMode('page')
     })
-  }, [pdfDoc, viewMode])
+  }, [pdfDoc])
 
   useEffect(() => {
     if (pdfDoc && !loading && fitMode === 'width') {
       const timer = setTimeout(fitWidth, 100)
       return () => clearTimeout(timer)
     }
-  }, [pdfDoc, loading, fitMode, fitWidth, totalPages, viewMode])
+  }, [pdfDoc, loading, fitMode, fitWidth])
 
   useEffect(() => {
     const handleResize = () => {
@@ -316,7 +294,6 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const navigateToDest = async (dest) => {
     if (!pdfDoc) return
     try {
-      let pageIndex
       let destObj = dest
 
       if (typeof dest === 'string') {
@@ -326,12 +303,18 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
         }
       }
 
+      let pageIndex = null
+
       if (Array.isArray(destObj)) {
         if (typeof destObj[0] === 'number') {
           pageIndex = destObj[0]
         } else if (destObj[0] && typeof destObj[0].pageIndex === 'number') {
           pageIndex = destObj[0].pageIndex
         }
+      }
+
+      if (pageIndex == null && destObj && typeof destObj.pageIndex === 'number') {
+        pageIndex = destObj.pageIndex
       }
 
       if (pageIndex != null) {
@@ -390,51 +373,13 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const toggleViewMode = () => {
     const newMode = viewMode === 'scroll' ? 'single' : 'scroll'
     setViewMode(newMode)
-    pageCanvasesRef.current = []
-    renderTasksRef.current = []
   }
 
   useEffect(() => {
-    if (viewMode === 'scroll' && pdfDoc && !loading) {
-      renderTasksRef.current.forEach((task, idx) => {
-        if (task && idx > 0) {
-          try {
-            task.cancel()
-          } catch {}
-        }
-      })
-      renderTasksRef.current = []
-      const canvases = document.querySelectorAll('[id^="pdf-page-"] canvas')
-      canvases.forEach((canvas) => {
-        delete canvas.dataset.rendered
-      })
-      setTimeout(() => {
-        renderVisiblePages()
-      }, 30)
+    if (viewMode === 'scroll') {
+      setRenderKey((k) => k + 1)
     }
-  }, [scale, viewMode, pdfDoc, loading, renderVisiblePages])
-
-  useEffect(() => {
-    const container = pagesContainerRef.current
-    if (container && viewMode === 'scroll') {
-      container.addEventListener('scroll', handleScroll)
-      return () => container.removeEventListener('scroll', handleScroll)
-    }
-  }, [viewMode, handleScroll])
-
-  useEffect(() => {
-    if (viewMode === 'single' && pdfDoc && !loading) {
-      if (renderTasksRef.current[0]) {
-        try {
-          renderTasksRef.current[0].cancel()
-        } catch {}
-      }
-      const canvas = document.querySelector('.relative.shadow-lg canvas')
-      if (canvas) {
-        renderSinglePage(currentPage, canvas)
-      }
-    }
-  }, [currentPage, scale, viewMode, pdfDoc, loading, renderSinglePage])
+  }, [viewMode, scale])
 
   return (
     <TooltipProvider>
@@ -697,6 +642,7 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
           <div
             ref={containerRef}
             className="flex-1 overflow-auto bg-muted/30 p-5"
+            onScroll={handleScroll}
           >
             {loading ? (
               <div className="flex h-full flex-col items-center justify-center">
@@ -705,14 +651,15 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
               </div>
             ) : viewMode === 'scroll' ? (
               <div
-                ref={pagesContainerRef}
                 className="mx-auto flex flex-col items-center gap-4"
                 style={{ maxWidth: '100%' }}
+                key={`scroll-${renderKey}`}
               >
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                   <div
                     key={pageNum}
                     id={`pdf-page-${pageNum}`}
+                    data-page={pageNum}
                     className="relative shadow-lg bg-white"
                   >
                     <canvas className="block" />
@@ -720,16 +667,13 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                 ))}
               </div>
             ) : (
-              <div className="flex justify-center">
+              <div className="flex justify-center" key={`single-${currentPage}-${scale}`}>
                 <div className="relative shadow-lg">
-                  <canvas
-                    ref={(canvas) => {
-                      if (canvas && pdfDoc) {
-                        canvas.dataset.rendered = 'true'
-                        renderSinglePage(currentPage, canvas)
-                      }
-                    }}
-                    className="bg-white"
+                  <SinglePageCanvas
+                    pdfDoc={pdfDoc}
+                    pageNum={currentPage}
+                    scale={scale}
+                    renderPageToCanvas={renderPageToCanvas}
                   />
                 </div>
               </div>
@@ -739,6 +683,18 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
       </div>
     </TooltipProvider>
   )
+}
+
+function SinglePageCanvas({ pdfDoc, pageNum, scale, renderPageToCanvas }) {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    if (canvasRef.current && pdfDoc) {
+      renderPageToCanvas(pageNum, canvasRef.current)
+    }
+  }, [pdfDoc, pageNum, scale, renderPageToCanvas])
+
+  return <canvas ref={canvasRef} className="bg-white" />
 }
 
 export default PdfViewer
