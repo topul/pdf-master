@@ -7,8 +7,9 @@ export function addHistory(file) {
   if (existsIdx !== -1) {
     history.splice(existsIdx, 1)
   }
+  const { data, ...meta } = file
   history.unshift({
-    ...file,
+    ...meta,
     accessedAt: Date.now(),
   })
   if (history.length > MAX_HISTORY) {
