@@ -1,11 +1,46 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, FolderOpen, BookOpen } from 'lucide-react'
+import {
+  ArrowLeft,
+  FolderOpen,
+  BookOpen,
+  Highlighter,
+  PencilLine,
+  FileImage,
+  FileType,
+  FileDown,
+  Lock,
+  Printer,
+  Wrench,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import PdfViewer from '@/components/PdfViewer.jsx'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import { addHistory } from '../utils/history'
 import useDragDrop from '../hooks/useDragDrop.js'
+
+// 阅读器快捷编辑入口：体现「阅读+编辑一体化」
+// 点击后通过 files:dropped 事件把当前文件带入目标工具页面
+const QUICK_ENTRIES = [
+  { id: 'annotate', path: '/annotate', icon: 'Highlighter', labelKey: 'qtAnnotate' },
+  { id: 'edit', path: '/edit', icon: 'PencilLine', labelKey: 'qtEdit' },
+  { id: 'extract', path: '/extract', icon: 'FileImage', labelKey: 'qtExtract' },
+  { id: 'pdf-to-word', path: '/pdf-to-word', icon: 'FileType', labelKey: 'qtConvert' },
+  { id: 'compress', path: '/compress', icon: 'FileDown', labelKey: 'qtCompress' },
+  { id: 'encrypt', path: '/encrypt', icon: 'Lock', labelKey: 'qtEncrypt' },
+  { id: 'print', path: '/print', icon: 'Printer', labelKey: 'qtPrint' },
+]
+
+const ICON_MAP = {
+  Highlighter: Highlighter,
+  PencilLine: PencilLine,
+  FileImage: FileImage,
+  FileType: FileType,
+  FileDown: FileDown,
+  Lock: Lock,
+  Printer: Printer,
+}
 
 function ViewerPage() {
   const location = useLocation()
@@ -13,12 +48,14 @@ function ViewerPage() {
   const t = useTranslations()
   const [fileData, setFileData] = useState(null)
   const [fileName, setFileName] = useState('')
+  const [filePath, setFilePath] = useState('')
 
   useDragDrop((droppedFiles) => {
     if (droppedFiles.length > 0) {
       const f = droppedFiles[0]
       setFileData(f.data)
       setFileName(f.name)
+      setFilePath(f.path || '')
     }
   })
 
@@ -26,6 +63,7 @@ function ViewerPage() {
     if (location.state?.file) {
       setFileData(location.state.file.data)
       setFileName(location.state.file.name)
+      setFilePath(location.state.file.path || '')
     }
   }, [location.state])
 
@@ -40,12 +78,12 @@ function ViewerPage() {
     })
     if (result.canceled) return
 
-    const filePath = result.filePaths[0]
-    const fileResult = await window.electronAPI.readFile(filePath)
+    const fp = result.filePaths[0]
+    const fileResult = await window.electronAPI.readFile(fp)
     if (fileResult.success) {
-      const name = filePath.split(/[\\/]/).pop()
+      const name = fp.split(/[\\/]/).pop()
       const fileInfo = {
-        path: filePath,
+        path: fp,
         name,
         data: fileResult.data,
         size: fileResult.data.length,
@@ -53,8 +91,38 @@ function ViewerPage() {
       addHistory(fileInfo)
       setFileData(fileResult.data)
       setFileName(name)
+      setFilePath(fp)
     }
   }
+
+  // 将当前文件带入目标工具页面：先派发 files:dropped 事件，
+  // 目标页面的 useDragDrop 会接收文件，再跳转路由
+  const handleQuickTool = (toolPath) => {
+    if (!fileData) return
+    window.dispatchEvent(
+      new CustomEvent('files:dropped', {
+        detail: {
+          files: [
+            {
+              path: filePath,
+              name: fileName,
+              data: fileData,
+              size: fileData.length,
+            },
+          ],
+        },
+      })
+    )
+    navigate(toolPath)
+  }
+
+  const quickEntries = useMemo(() => {
+    return QUICK_ENTRIES.map((e) => ({
+      ...e,
+      Icon: ICON_MAP[e.icon],
+      label: t.viewerPage?.[e.labelKey] || e.id,
+    }))
+  }, [t])
 
   if (!fileData) {
     return (
@@ -98,6 +166,43 @@ function ViewerPage() {
           {t.viewerPage.openOther || '打开其他'}
         </Button>
       </div>
+
+      {/* 快捷工具栏：阅读时直接调用编辑/转换/压缩等工具 */}
+      <TooltipProvider delayDuration={300}>
+        <div className="flex items-center gap-1 overflow-x-auto border-b bg-card px-3 py-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mr-1 flex items-center gap-1.5 px-1.5 text-muted-foreground">
+                <Wrench className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">
+                  {t.viewerPage?.quickTools || '快捷工具'}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>{t.viewerPage?.quickToolsHint || '将当前文件带入工具'}</TooltipContent>
+          </Tooltip>
+
+          <div className="mx-1 h-5 w-px bg-border" />
+
+          {quickEntries.map(({ id, path, Icon, label }) => (
+            <Tooltip key={id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 px-2 text-xs"
+                  onClick={() => handleQuickTool(path)}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{label}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+      </TooltipProvider>
+
       <div className="flex-1 overflow-hidden">
         <PdfViewer fileData={fileData} fileName={fileName} />
       </div>
