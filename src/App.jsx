@@ -21,6 +21,7 @@ import { SearchBar } from '@/components/SearchBar.jsx'
 import { CollapsibleGroup } from '@/components/CollapsibleGroup.jsx'
 import { FavoritesList } from '@/components/FavoritesList.jsx'
 import { RecentTools } from '@/components/RecentTools.jsx'
+import { ShortcutHelpDialog } from '@/components/ShortcutHelpDialog.jsx'
 import { useContextMenu } from '@/components/ContextMenu'
 import MergePage from './pages/MergePage.jsx'
 import SplitPage from './pages/SplitPage.jsx'
@@ -58,6 +59,7 @@ function App() {
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
   const [showSearchPanel, setShowSearchPanel] = useState(false)
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false)
   const t = useTranslations()
 
   // 注册 Electron 层快捷键
@@ -72,6 +74,12 @@ function App() {
       window.dispatchEvent(new CustomEvent('sidebar:focus-search'))
     }
   })
+
+  // Ctrl+B：收起/展开侧边栏
+  useKeyboardShortcut('ctrl+b', () => setCollapsed((v) => !v))
+
+  // ? 键：显示快捷键帮助面板
+  useKeyboardShortcut('?', () => setShowShortcutHelp(true))
 
   // 收起态浮动面板 Esc 关闭
   useKeyboardShortcut('escape', () => setShowSearchPanel(false), [showSearchPanel])
@@ -322,6 +330,11 @@ function App() {
         </main>
 
         {renderToolMenu()}
+
+        <ShortcutHelpDialog
+          open={showShortcutHelp}
+          onClose={() => setShowShortcutHelp(false)}
+        />
       </div>
     </DragDropProvider>
   )

@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AnnotationLayer } from '@/components/AnnotationLayer.jsx'
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut.jsx'
 import { cn } from '@/lib/utils'
 
 let pdfjsLib = null
@@ -280,6 +281,16 @@ function PdfViewer({ fileData, fileName = 'document.pdf', annotationProps }) {
     setFitMode(null)
     setScale((s) => Math.max(0.25, s - 0.25))
   }
+
+  // 阅读器快捷键：Home/End 跳页，+/- 缩放，0 重置
+  useKeyboardShortcut('home', () => goToPage(1), [totalPages])
+  useKeyboardShortcut('end', () => goToPage(totalPages), [totalPages])
+  useKeyboardShortcut('+', () => handleZoomIn(), [])
+  useKeyboardShortcut('-', () => handleZoomOut(), [])
+  useKeyboardShortcut('0', () => {
+    setFitMode(null)
+    setScale(1)
+  }, [])
 
   const searchText = useCallback(async () => {
     if (!pdfDoc || !searchQuery.trim()) return
