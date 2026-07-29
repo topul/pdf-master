@@ -443,6 +443,10 @@ export default {
     batchCompress: '批量压缩',
     batchEncrypt: '批量加密',
     batchExtractText: '批量提取文字',
+    retry: '重试',
+    retryingStatus: '重试中：{name}',
+    retrySuccess: '重试成功',
+    retryFailed: '重试失败：{error}',
   },
   signature: {
     title: 'PDF 签名',

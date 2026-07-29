@@ -443,6 +443,10 @@ export default {
     batchCompress: 'Batch Compress',
     batchEncrypt: 'Batch Encrypt',
     batchExtractText: 'Batch Extract Text',
+    retry: 'Retry',
+    retryingStatus: 'Retrying: {name}',
+    retrySuccess: 'Retry succeeded',
+    retryFailed: 'Retry failed: {error}',
   },
   signature: {
     title: 'PDF Signature',

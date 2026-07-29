@@ -13,10 +13,12 @@ import {
   Play,
   Pause,
   GripVertical,
+  RotateCw,
 } from 'lucide-react'
 import { compressPdf, encryptPdf, extractPdfText } from '../utils/pdfUtils.js'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import PageHeader from '@/components/PageHeader.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -214,6 +216,32 @@ function BatchPage() {
     abortRef.current = true
   }
 
+  // 单个文件重试：对失败的文件重新执行对应操作
+  const handleRetry = async (index) => {
+    if (processing) return
+    const file = files[index]
+    if (!file) return
+
+    setResults((prev) => ({ ...prev, [index]: { status: 'processing' } }))
+    setStatus({ type: 'info', message: (t.batch?.retryingStatus || '重试中：{name}').replace('{name}', file.name) })
+
+    try {
+      let result
+      if (operation === 'compress') {
+        result = await compressPdf(file.data, compressMode)
+      } else if (operation === 'encrypt') {
+        result = await encryptPdf(file.data, { userPassword: encryptPassword })
+      } else if (operation === 'extractText') {
+        result = await extractPdfText(file.data)
+      }
+      setResults((prev) => ({ ...prev, [index]: { status: 'success', result } }))
+      setStatus({ type: 'success', message: t.batch?.retrySuccess || '重试成功' })
+    } catch (error) {
+      setResults((prev) => ({ ...prev, [index]: { status: 'error', error: error.message } }))
+      setStatus({ type: 'error', message: (t.batch?.retryFailed || '重试失败：{error}').replace('{error}', error.message) })
+    }
+  }
+
   const handleSaveAll = async () => {
     const successItems = files
       .map((f, i) => ({ file: f, result: results[i], index: i }))
@@ -258,7 +286,10 @@ function BatchPage() {
 
   const successCount = Object.values(results).filter((r) => r?.status === 'success').length
   const errorCount = Object.values(results).filter((r) => r?.status === 'error').length
-  const currentOp = OPERATIONS.find((o) => o.id === operation)
+  // 进度百分比：基于已结束（成功 + 失败）的项数
+  const finishedCount = successCount + errorCount
+  const progressPercent =
+    files.length === 0 ? 0 : Math.min(100, Math.round((finishedCount / files.length) * 100))
 
   return (
     <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-5 px-6 py-6 lg:px-8">
@@ -307,6 +338,18 @@ function BatchPage() {
       </PageHeader>
 
       <StatusMessage status={status} />
+
+      {(processing || (files.length > 0 && finishedCount > 0)) && (
+        <div className="flex items-center gap-3 rounded-md border bg-card px-4 py-2.5">
+          <span className="text-xs text-muted-foreground">
+            {t.batch.progress || '处理进度'}
+          </span>
+          <Progress value={progressPercent} className="h-1.5 flex-1" />
+          <span className="w-10 text-right text-xs font-medium tabular-nums">
+            {progressPercent}%
+          </span>
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col gap-4 overflow-hidden md:flex-row">
         {/* 左侧：文件列表 */}
@@ -373,9 +416,20 @@ function BatchPage() {
                           <Check className="h-4 w-4 text-emerald-500" />
                         )}
                         {r?.status === 'error' && (
-                          <Badge variant="destructive" className="text-[10px]" title={r.error}>
-                            {t.batch.failed || '失败'}
-                          </Badge>
+                          <>
+                            <Badge variant="destructive" className="text-[10px]" title={r.error}>
+                              {t.batch.failed || '失败'}
+                            </Badge>
+                            {!processing && (
+                              <button
+                                className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-primary"
+                                onClick={() => handleRetry(index)}
+                                title={t.batch?.retry || '重试'}
+                              >
+                                <RotateCw className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </>
                         )}
                         {!processing && (
                           <button
