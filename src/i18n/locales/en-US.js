@@ -1178,6 +1178,7 @@ export default {
     annotToolNote: 'Note',
     annotTextPlaceholder: 'Type text then click page',
     annotClear: 'Clear all annotations',
+    annotClearConfirm: 'Clear all annotations for this file? This cannot be undone.',
     annotSave: 'Save Annotations',
     annotTipHand: 'Hand mode: click annotation to delete (or Alt)',
     annotTipHighlight: 'Drag to select highlight area',

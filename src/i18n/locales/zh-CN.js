@@ -1178,6 +1178,7 @@ export default {
     annotToolNote: '便签',
     annotTextPlaceholder: '输入文字后点击页面',
     annotClear: '清空所有批注',
+    annotClearConfirm: '确定清空当前文件的所有批注？此操作不可撤销。',
     annotSave: '保存批注',
     annotTipHand: '手型模式：点击批注可删除（或按 Alt）',
     annotTipHighlight: '拖拽鼠标选择高亮区域',

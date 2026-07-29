@@ -67,8 +67,15 @@ function ViewerPage() {
   const [fileName, setFileName] = useState('')
   const [filePath, setFilePath] = useState('')
 
-  // 批注状态
-  const annot = useAnnotations()
+  // 文件标识：用于批注持久化定位。优先用绝对路径；无路径时用「名称_大小」兜底
+  const fileKey = useMemo(() => {
+    if (filePath) return filePath.replace(/[\\/]/g, '_')
+    if (fileName && fileData) return `${fileName}_${fileData.length}`
+    return ''
+  }, [filePath, fileName, fileData])
+
+  // 批注状态（按 fileKey 持久化到 localStorage，切换文件自动加载对应批注）
+  const annot = useAnnotations(fileKey)
   const [annotActive, setAnnotActive] = useState(false)
   const [annotTool, setAnnotTool] = useState('hand')
   const [annotColor, setAnnotColor] = useState(COLORS[0])
@@ -117,8 +124,7 @@ function ViewerPage() {
       setFileData(fileResult.data)
       setFileName(name)
       setFilePath(fp)
-      // 切换文件时清空批注
-      annot.clearAll()
+      // 批注由 useAnnotations(fileKey) 自动按文件加载，无需手动清空
     }
   }
 
@@ -388,7 +394,11 @@ function ViewerPage() {
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() => annot.clearAll()}
+                    onClick={() => {
+                      if (window.confirm(t.viewerPage?.annotClearConfirm || '确定清空当前文件的所有批注？此操作不可撤销。')) {
+                        annot.clearAll()
+                      }
+                    }}
                     disabled={!annot.hasAnnotations()}
                   >
                     <Eraser className="h-3.5 w-3.5" />

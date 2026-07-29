@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, Suspense, lazy } from 'react'
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home,
@@ -9,6 +9,7 @@ import {
   Search as SearchIcon,
   Star,
   X,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -23,36 +24,46 @@ import { FavoritesList } from '@/components/FavoritesList.jsx'
 import { RecentTools } from '@/components/RecentTools.jsx'
 import { ShortcutHelpDialog } from '@/components/ShortcutHelpDialog.jsx'
 import { useContextMenu } from '@/components/ContextMenu'
-import MergePage from './pages/MergePage.jsx'
-import SplitPage from './pages/SplitPage.jsx'
-import EditPage from './pages/EditPage.jsx'
 import HomePage from './pages/HomePage.jsx'
-import TextPage from './pages/TextPage.jsx'
-import WatermarkPage from './pages/WatermarkPage.jsx'
-import PrintPage from './pages/PrintPage.jsx'
-import PageNumberPage from './pages/PageNumberPage.jsx'
-import ImageToPdfPage from './pages/ImageToPdfPage.jsx'
-import PdfToImagePage from './pages/PdfToImagePage.jsx'
-import MetadataPage from './pages/MetadataPage.jsx'
-import EncryptPage from './pages/EncryptPage.jsx'
-import CompressPage from './pages/CompressPage.jsx'
-import ExtractPage from './pages/ExtractPage.jsx'
-import BatchPage from './pages/BatchPage.jsx'
-import SignaturePage from './pages/SignaturePage.jsx'
-import FormPage from './pages/FormPage.jsx'
-import BookmarkPage from './pages/BookmarkPage.jsx'
-import CropPage from './pages/CropPage.jsx'
-import ComparePage from './pages/ComparePage.jsx'
-import OcrPage from './pages/OcrPage.jsx'
-import WatermarkRemovePage from './pages/WatermarkRemovePage.jsx'
-import PdfToWordPage from './pages/PdfToWordPage.jsx'
-import PdfToExcelPage from './pages/PdfToExcelPage.jsx'
-import AnnotatePage from './pages/AnnotatePage.jsx'
-import FormCreatePage from './pages/FormCreatePage.jsx'
-import BatchRenamePage from './pages/BatchRenamePage.jsx'
-import ViewerPage from './pages/ViewerPage.jsx'
-import SettingsPage from './pages/SettingsPage.jsx'
 import DragDropProvider from './components/DragDropProvider.jsx'
+
+// 路由级懒加载：减少首屏 bundle 体积，按需加载各工具页
+const MergePage = lazy(() => import('./pages/MergePage.jsx'))
+const SplitPage = lazy(() => import('./pages/SplitPage.jsx'))
+const EditPage = lazy(() => import('./pages/EditPage.jsx'))
+const TextPage = lazy(() => import('./pages/TextPage.jsx'))
+const WatermarkPage = lazy(() => import('./pages/WatermarkPage.jsx'))
+const PrintPage = lazy(() => import('./pages/PrintPage.jsx'))
+const PageNumberPage = lazy(() => import('./pages/PageNumberPage.jsx'))
+const ImageToPdfPage = lazy(() => import('./pages/ImageToPdfPage.jsx'))
+const PdfToImagePage = lazy(() => import('./pages/PdfToImagePage.jsx'))
+const MetadataPage = lazy(() => import('./pages/MetadataPage.jsx'))
+const EncryptPage = lazy(() => import('./pages/EncryptPage.jsx'))
+const CompressPage = lazy(() => import('./pages/CompressPage.jsx'))
+const ExtractPage = lazy(() => import('./pages/ExtractPage.jsx'))
+const BatchPage = lazy(() => import('./pages/BatchPage.jsx'))
+const SignaturePage = lazy(() => import('./pages/SignaturePage.jsx'))
+const FormPage = lazy(() => import('./pages/FormPage.jsx'))
+const BookmarkPage = lazy(() => import('./pages/BookmarkPage.jsx'))
+const CropPage = lazy(() => import('./pages/CropPage.jsx'))
+const ComparePage = lazy(() => import('./pages/ComparePage.jsx'))
+const OcrPage = lazy(() => import('./pages/OcrPage.jsx'))
+const WatermarkRemovePage = lazy(() => import('./pages/WatermarkRemovePage.jsx'))
+const PdfToWordPage = lazy(() => import('./pages/PdfToWordPage.jsx'))
+const PdfToExcelPage = lazy(() => import('./pages/PdfToExcelPage.jsx'))
+const AnnotatePage = lazy(() => import('./pages/AnnotatePage.jsx'))
+const FormCreatePage = lazy(() => import('./pages/FormCreatePage.jsx'))
+const BatchRenamePage = lazy(() => import('./pages/BatchRenamePage.jsx'))
+const ViewerPage = lazy(() => import('./pages/ViewerPage.jsx'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'))
+
+// 页面加载占位
+const PageFallback = () => (
+  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+    <span className="text-sm">加载中...</span>
+  </div>
+)
 
 function App() {
   const location = useLocation()
@@ -295,37 +306,39 @@ function App() {
         {/* 主内容区 */}
         <main className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/merge" element={<MergePage />} />
-              <Route path="/split" element={<SplitPage />} />
-              <Route path="/edit" element={<EditPage />} />
-              <Route path="/image-to-pdf" element={<ImageToPdfPage />} />
-              <Route path="/pdf-to-image" element={<PdfToImagePage />} />
-              <Route path="/text" element={<TextPage />} />
-              <Route path="/watermark" element={<WatermarkPage />} />
-              <Route path="/pagenum" element={<PageNumberPage />} />
-              <Route path="/compress" element={<CompressPage />} />
-              <Route path="/extract" element={<ExtractPage />} />
-              <Route path="/metadata" element={<MetadataPage />} />
-              <Route path="/encrypt" element={<EncryptPage />} />
-              <Route path="/print" element={<PrintPage />} />
-              <Route path="/batch" element={<BatchPage />} />
-              <Route path="/compare" element={<ComparePage />} />
-              <Route path="/ocr" element={<OcrPage />} />
-              <Route path="/watermark-remove" element={<WatermarkRemovePage />} />
-              <Route path="/pdf-to-word" element={<PdfToWordPage />} />
-              <Route path="/pdf-to-excel" element={<PdfToExcelPage />} />
-              <Route path="/annotate" element={<AnnotatePage />} />
-              <Route path="/form-create" element={<FormCreatePage />} />
-              <Route path="/batch-rename" element={<BatchRenamePage />} />
-              <Route path="/signature" element={<SignaturePage />} />
-              <Route path="/form" element={<FormPage />} />
-              <Route path="/bookmark" element={<BookmarkPage />} />
-              <Route path="/crop" element={<CropPage />} />
-              <Route path="/viewer" element={<ViewerPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Routes>
+            <Suspense fallback={<PageFallback />}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/merge" element={<MergePage />} />
+                <Route path="/split" element={<SplitPage />} />
+                <Route path="/edit" element={<EditPage />} />
+                <Route path="/image-to-pdf" element={<ImageToPdfPage />} />
+                <Route path="/pdf-to-image" element={<PdfToImagePage />} />
+                <Route path="/text" element={<TextPage />} />
+                <Route path="/watermark" element={<WatermarkPage />} />
+                <Route path="/pagenum" element={<PageNumberPage />} />
+                <Route path="/compress" element={<CompressPage />} />
+                <Route path="/extract" element={<ExtractPage />} />
+                <Route path="/metadata" element={<MetadataPage />} />
+                <Route path="/encrypt" element={<EncryptPage />} />
+                <Route path="/print" element={<PrintPage />} />
+                <Route path="/batch" element={<BatchPage />} />
+                <Route path="/compare" element={<ComparePage />} />
+                <Route path="/ocr" element={<OcrPage />} />
+                <Route path="/watermark-remove" element={<WatermarkRemovePage />} />
+                <Route path="/pdf-to-word" element={<PdfToWordPage />} />
+                <Route path="/pdf-to-excel" element={<PdfToExcelPage />} />
+                <Route path="/annotate" element={<AnnotatePage />} />
+                <Route path="/form-create" element={<FormCreatePage />} />
+                <Route path="/batch-rename" element={<BatchRenamePage />} />
+                <Route path="/signature" element={<SignaturePage />} />
+                <Route path="/form" element={<FormPage />} />
+                <Route path="/bookmark" element={<BookmarkPage />} />
+                <Route path="/crop" element={<CropPage />} />
+                <Route path="/viewer" element={<ViewerPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Routes>
+            </Suspense>
           </div>
         </main>
 
