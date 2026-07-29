@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import PdfViewer from '@/components/PdfViewer.jsx'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import { useAnnotations, COLORS, ANNOT_TYPES } from '@/hooks/useAnnotations.jsx'
+import { setCurrentFile } from '@/hooks/useCurrentFile.jsx'
 import { addHistory } from '../utils/history'
 import useDragDrop from '../hooks/useDragDrop.js'
 import { cn } from '@/lib/utils'
@@ -122,22 +123,16 @@ function ViewerPage() {
   }
 
   // 将当前文件带入目标工具页面
+  // 通过 useCurrentFile 上下文传递，目标工具页加载时自动读取
   const handleQuickTool = (toolPath) => {
     if (!fileData) return
-    window.dispatchEvent(
-      new CustomEvent('files:dropped', {
-        detail: {
-          files: [
-            {
-              path: filePath,
-              name: fileName,
-              data: fileData,
-              size: fileData.length,
-            },
-          ],
-        },
-      })
-    )
+    const fileObj = {
+      path: filePath,
+      name: fileName,
+      data: fileData,
+      size: fileData.length,
+    }
+    setCurrentFile(fileObj)
     navigate(toolPath)
   }
 

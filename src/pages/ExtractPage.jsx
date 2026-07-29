@@ -22,6 +22,7 @@ import FileInfoCard from '@/components/FileInfoCard.jsx'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useAutoLoadCurrentFile } from '@/hooks/useCurrentFile.jsx'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 
 function formatSize(bytes) {
@@ -32,6 +33,7 @@ function formatSize(bytes) {
 
 function ExtractPage() {
   const t = useTranslations()
+  useAutoLoadCurrentFile()
   const [file, setFile] = useState(null)
   const [tab, setTab] = useState('text')
   const [extracting, setExtracting] = useState(false)

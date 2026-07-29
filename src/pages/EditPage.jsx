@@ -31,10 +31,12 @@ import EmptyState from '@/components/EmptyState.jsx'
 import StatusMessage from '@/components/StatusMessage.jsx'
 import FileInfoCard from '@/components/FileInfoCard.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useAutoLoadCurrentFile } from '@/hooks/useCurrentFile.jsx'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 
 function EditPage() {
   const t = useTranslations()
+  useAutoLoadCurrentFile()
   const [file, setFile] = useState(null)
   const [currentData, setCurrentData] = useState(null)
   const [selectedPages, setSelectedPages] = useState(new Set())
