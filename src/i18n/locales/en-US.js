@@ -88,6 +88,12 @@ export default {
     scZoomIn: 'Zoom in',
     scZoomOut: 'Zoom out',
     scZoomReset: 'Reset zoom',
+    pin: 'Pin to top',
+    unpin: 'Unpin',
+    pinned: 'Pinned',
+    showInFolder: 'Show in folder',
+    copyPath: 'Copy path',
+    pathCopied: 'Path copied',
   },
   nav: {
     core: 'Core Features',

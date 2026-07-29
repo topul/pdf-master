@@ -52,5 +52,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   // 应用操作
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
+  showItemInFolder: (filePath) => ipcRenderer.invoke('shell:showItemInFolder', filePath),
   checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),
 })

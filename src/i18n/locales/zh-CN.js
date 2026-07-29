@@ -88,6 +88,12 @@ export default {
     scZoomIn: '放大',
     scZoomOut: '缩小',
     scZoomReset: '重置缩放',
+    pin: '固定置顶',
+    unpin: '取消固定',
+    pinned: '已固定',
+    showInFolder: '在文件夹中显示',
+    copyPath: '复制路径',
+    pathCopied: '路径已复制',
   },
   nav: {
     core: '核心功能',

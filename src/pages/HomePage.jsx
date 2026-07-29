@@ -8,6 +8,8 @@ import {
   Cpu,
   WifiOff,
   Sparkles,
+  Pin,
+  PinOff,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,7 +18,7 @@ import { useTranslations } from '@/hooks/useLocale.jsx'
 import { SearchBar } from '@/components/SearchBar.jsx'
 import { QuickActions } from '@/components/QuickActions.jsx'
 import { CategoryCards } from '@/components/CategoryCards.jsx'
-import { getHistory, clearHistory, formatDate, formatSize } from '../utils/history'
+import { getSortedHistory, clearHistory, removeFromHistory, togglePin, formatDate, formatSize } from '../utils/history'
 import { useContextMenu } from '../components/ContextMenu'
 
 function HomePage() {
@@ -26,7 +28,7 @@ function HomePage() {
   const [contextFile, setContextFile] = useState(null)
 
   useEffect(() => {
-    setHistory(getHistory())
+    setHistory(getSortedHistory())
   }, [])
 
   const handleClearHistory = () => {
@@ -35,9 +37,31 @@ function HomePage() {
   }
 
   const handleDeleteFile = (file) => {
-    const filtered = history.filter((h) => h.path !== file.path)
-    localStorage.setItem('pdf_master_history', JSON.stringify(filtered))
+    const filtered = removeFromHistory(file.path)
     setHistory(filtered)
+  }
+
+  const handleTogglePin = (file) => {
+    setHistory(togglePin(file.path))
+  }
+
+  // 在系统文件管理器中显示文件所在文件夹
+  const handleShowInFolder = async (file) => {
+    try {
+      await window.electronAPI?.showItemInFolder?.(file.path)
+    } catch (e) {
+      // 降级：复制路径到剪贴板
+      handleCopyPath(file)
+    }
+  }
+
+  // 复制文件路径到剪贴板
+  const handleCopyPath = async (file) => {
+    try {
+      await navigator.clipboard.writeText(file.path)
+    } catch (e) {
+      // ignore
+    }
   }
 
   const handleOpenFile = async (file) => {
@@ -62,6 +86,21 @@ function HomePage() {
     {
       label: t.common?.open || '打开',
       onClick: () => handleOpenFile(contextFile),
+    },
+    {
+      label: contextFile?.pinned
+        ? (t.common?.unpin || '取消固定')
+        : (t.common?.pin || '固定置顶'),
+      onClick: () => handleTogglePin(contextFile),
+    },
+    { divider: true },
+    {
+      label: t.common?.showInFolder || '在文件夹中显示',
+      onClick: () => handleShowInFolder(contextFile),
+    },
+    {
+      label: t.common?.copyPath || '复制路径',
+      onClick: () => handleCopyPath(contextFile),
     },
     { divider: true },
     {
@@ -185,17 +224,37 @@ function HomePage() {
                     onContextMenu={(e) => handleContextMenu(e, item)}
                     onClick={() => handleOpenFile(item)}
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
                       <FileText className="h-4 w-4 text-primary" />
+                      {item.pinned && (
+                        <Pin className="absolute -right-1 -top-1 h-3 w-3 rotate-45 fill-primary text-primary" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{item.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium">{item.name}</span>
+                        {item.pinned && (
+                          <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                            {t.common?.pinned || '已固定'}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{formatSize(item.size)}</span>
                         <span>·</span>
                         <span>{formatDate(item.accessedAt)}</span>
                       </div>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleTogglePin(item)
+                      }}
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
+                      title={item.pinned ? (t.common?.unpin || '取消固定') : (t.common?.pin || '固定置顶')}
+                    >
+                      {item.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()

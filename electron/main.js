@@ -146,6 +146,16 @@ ipcMain.handle('app:openExternal', async (event, url) => {
   }
 })
 
+// 在系统文件管理器中显示文件
+ipcMain.handle('shell:showItemInFolder', async (event, filePath) => {
+  try {
+    shell.showItemInFolder(filePath)
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
 // 检查更新（暂未实现，显示提示）
 ipcMain.handle('app:checkUpdate', async () => {
   await dialog.showMessageBox(mainWindow, {
