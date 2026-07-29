@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Settings,
   Palette,
@@ -9,12 +9,19 @@ import {
   Sun,
   Moon,
   ChevronRight,
+  Download,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
 import { useTheme } from '@/hooks/useTheme.js'
 import { useLocale } from '@/hooks/useLocale.jsx'
 import { useTranslations } from '@/hooks/useLocale.jsx'
@@ -52,6 +59,69 @@ function SettingsPage() {
   ]
 
   const [historyLimit, setHistoryLimit] = useState(20)
+
+  // ====== 自动更新状态 ======
+  // status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  const [updateStatus, setUpdateStatus] = useState('idle')
+  const [updateInfo, setUpdateInfo] = useState(null) // { version, releaseNotes, releaseDate }
+  const [downloadPercent, setDownloadPercent] = useState(0)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  // 订阅主进程推送的更新状态
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api?.onUpdateStatus) return
+    const unsubscribe = api.onUpdateStatus((payload) => {
+      if (!payload) return
+      switch (payload.event) {
+        case 'checking':
+          setUpdateStatus('checking')
+          setErrorMsg('')
+          break
+        case 'available':
+          setUpdateStatus('available')
+          setUpdateInfo({ version: payload.version, releaseNotes: payload.releaseNotes, releaseDate: payload.releaseDate })
+          setDownloadPercent(0)
+          setErrorMsg('')
+          break
+        case 'not-available':
+          setUpdateStatus('not-available')
+          setErrorMsg('')
+          break
+        case 'downloading':
+          setUpdateStatus('downloading')
+          setDownloadPercent(payload.percent || 0)
+          break
+        case 'downloaded':
+          setUpdateStatus('downloaded')
+          setDownloadPercent(100)
+          break
+        case 'error':
+          setUpdateStatus('error')
+          setErrorMsg(payload.message || 'unknown error')
+          break
+        default:
+          break
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  const handleCheckUpdate = useCallback(() => {
+    setUpdateStatus('checking')
+    setErrorMsg('')
+    window.electronAPI?.updateCheck?.()
+  }, [])
+
+  const handleDownloadUpdate = useCallback(() => {
+    setUpdateStatus('downloading')
+    setDownloadPercent(0)
+    window.electronAPI?.updateDownload?.()
+  }, [])
+
+  const handleInstallUpdate = useCallback(() => {
+    window.electronAPI?.updateInstall?.()
+  }, [])
 
   const handleHistoryLimitChange = (e) => {
     const val = parseInt(e.target.value)
@@ -219,25 +289,109 @@ function SettingsPage() {
                 <p className="mt-4 max-w-sm text-xs text-muted-foreground">
                   {t.settings?.aboutDesc || '一款完全在本地运行的 PDF 处理工具集，保护您的隐私安全。'}
                 </p>
-                <div className="mt-6 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.electronAPI?.checkUpdate?.()}
-                  >
-                    {t.settings?.checkUpdate || '检查更新'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      window.electronAPI?.openExternal?.(
-                        'https://github.com/topul/pdf-master'
-                      )
-                    }
-                  >
-                    {t.settings?.openSource || '开源地址'}
-                  </Button>
+
+                {/* 更新状态区 */}
+                <div className="mt-6 w-full max-w-sm space-y-3">
+                  {/* 状态提示行 */}
+                  {updateStatus === 'checking' && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>{t.settings?.updateChecking || '正在检查更新...'}</span>
+                    </div>
+                  )}
+                  {updateStatus === 'available' && updateInfo && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>
+                        {(t.settings?.updateAvailable || '发现新版本 {version}').replace('{version}', updateInfo.version || '')}
+                      </span>
+                    </div>
+                  )}
+                  {updateStatus === 'not-available' && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      <span>{t.settings?.updateLatest || '已是最新版本'}</span>
+                    </div>
+                  )}
+                  {updateStatus === 'downloading' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Download className="h-3.5 w-3.5" />
+                          {t.settings?.updateDownloading || '下载中...'}
+                        </span>
+                        <span className="tabular-nums">{downloadPercent}%</span>
+                      </div>
+                      <Progress value={downloadPercent} className="h-1.5" />
+                    </div>
+                  )}
+                  {updateStatus === 'downloaded' && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>{t.settings?.updateDownloaded || '更新已下载，重启后生效'}</span>
+                    </div>
+                  )}
+                  {updateStatus === 'error' && (
+                    <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2.5 text-left text-xs text-destructive">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <div>
+                        <div className="font-medium">{t.settings?.updateError || '更新失败'}</div>
+                        {errorMsg && <div className="mt-0.5 break-all opacity-80">{errorMsg}</div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 操作按钮 */}
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {(updateStatus === 'idle' || updateStatus === 'error' || updateStatus === 'not-available') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCheckUpdate}
+                        disabled={updateStatus === 'checking'}
+                      >
+                        <RefreshCw className="mr-1.5 h-4 w-4" />
+                        {t.settings?.checkUpdate || '检查更新'}
+                      </Button>
+                    )}
+                    {updateStatus === 'available' && (
+                      <Button size="sm" onClick={handleDownloadUpdate}>
+                        <Download className="mr-1.5 h-4 w-4" />
+                        {t.settings?.updateDownload || '下载更新'}
+                      </Button>
+                    )}
+                    {updateStatus === 'downloaded' && (
+                      <Button size="sm" onClick={handleInstallUpdate}>
+                        <RotateCcw className="mr-1.5 h-4 w-4" />
+                        {t.settings?.updateInstallRestart || '重启并安装'}
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        window.electronAPI?.openExternal?.(
+                          'https://github.com/topul/pdf-master/releases'
+                        )
+                      }
+                    >
+                      {t.settings?.openSource || '开源地址'}
+                    </Button>
+                  </div>
+
+                  {/* 发布说明 */}
+                  {updateInfo?.releaseNotes && (updateStatus === 'available' || updateStatus === 'downloaded') && (
+                    <details className="mt-2 rounded-md border bg-muted/30 p-2.5 text-left">
+                      <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                        {t.settings?.updateReleaseNotes || '更新内容'}
+                      </summary>
+                      <div className="mt-2 whitespace-pre-wrap text-xs text-foreground/80">
+                        {typeof updateInfo.releaseNotes === 'string'
+                          ? updateInfo.releaseNotes
+                          : JSON.stringify(updateInfo.releaseNotes)}
+                      </div>
+                    </details>
+                  )}
                 </div>
               </CardContent>
             </Card>

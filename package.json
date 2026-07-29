@@ -38,6 +38,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "docx": "^8.5.0",
+    "electron-updater": "^6.8.9",
     "file-saver": "^2.0.5",
     "lucide-react": "^1.25.0",
     "pdf-lib": "^1.17.1",
@@ -133,14 +134,24 @@
         {
           "target": "dmg",
           "arch": [
-            "x64",
+            "x64"
+          ]
+        },
+        {
+          "target": "dmg",
+          "arch": [
             "arm64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "x64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
             "arm64"
           ]
         }
@@ -163,6 +174,12 @@
           "path": "/Applications"
         }
       ]
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "topul",
+      "repo": "pdf-master",
+      "releaseType": "release"
     }
   }
 }

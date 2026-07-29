@@ -54,4 +54,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
   showItemInFolder: (filePath) => ipcRenderer.invoke('shell:showItemInFolder', filePath),
   checkUpdate: () => ipcRenderer.invoke('app:checkUpdate'),
+  // 自动更新：手动检查 / 下载 / 安装重启 / 订阅状态推送
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateDownload: () => ipcRenderer.invoke('update:download'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  onUpdateStatus: (callback) => {
+    const handler = (_event, payload) => callback(payload)
+    ipcRenderer.on('update:status', handler)
+    return () => ipcRenderer.removeListener('update:status', handler)
+  },
 })
