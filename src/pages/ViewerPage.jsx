@@ -18,6 +18,9 @@ import {
   Eraser,
   Download,
   X,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import { saveAs } from 'file-saver'
@@ -28,28 +31,25 @@ import { useTranslations } from '@/hooks/useLocale.jsx'
 import { useAnnotations, COLORS, ANNOT_TYPES } from '@/hooks/useAnnotations.jsx'
 import { setCurrentFile } from '@/hooks/useCurrentFile.jsx'
 import { addHistory } from '../utils/history'
+import {
+  compressPdf,
+  extractPdfText,
+  renderPdfToImages,
+} from '../utils/pdfUtils.js'
 import useDragDrop from '../hooks/useDragDrop.js'
 import { cn } from '@/lib/utils'
 
-// 阅读器快捷编辑入口：体现「阅读+编辑一体化」
-// 点击后通过 files:dropped 事件把当前文件带入目标工具页面
+// 阅读器快捷入口：体现「阅读+编辑一体化」
+// - direct: 在阅读器内直接执行并下载结果，不跳转
+// - navigate: 需要复杂 UI 的操作，携带文件上下文跳转到工具页
 const QUICK_ENTRIES = [
-  { id: 'edit', path: '/edit', icon: 'PencilLine', labelKey: 'qtEdit' },
-  { id: 'extract', path: '/extract', icon: 'FileImage', labelKey: 'qtExtract' },
-  { id: 'pdf-to-word', path: '/pdf-to-word', icon: 'FileType', labelKey: 'qtConvert' },
-  { id: 'compress', path: '/compress', icon: 'FileDown', labelKey: 'qtCompress' },
-  { id: 'encrypt', path: '/encrypt', icon: 'Lock', labelKey: 'qtEncrypt' },
-  { id: 'print', path: '/print', icon: 'Printer', labelKey: 'qtPrint' },
+  { id: 'compress', kind: 'direct', icon: FileDown, labelKey: 'qtCompress' },
+  { id: 'extractText', kind: 'direct', icon: FileType, labelKey: 'qtExtractText' },
+  { id: 'exportImages', kind: 'direct', icon: FileImage, labelKey: 'qtExportImages' },
+  { id: 'edit', kind: 'navigate', path: '/edit', icon: PencilLine, labelKey: 'qtEdit' },
+  { id: 'encrypt', kind: 'navigate', path: '/encrypt', icon: Lock, labelKey: 'qtEncrypt' },
+  { id: 'print', kind: 'navigate', path: '/print', icon: Printer, labelKey: 'qtPrint' },
 ]
-
-const ICON_MAP = {
-  PencilLine: PencilLine,
-  FileImage: FileImage,
-  FileType: FileType,
-  FileDown: FileDown,
-  Lock: Lock,
-  Printer: Printer,
-}
 
 // 批注工具定义
 const ANNOT_TOOLS = [
@@ -79,8 +79,8 @@ function ViewerPage() {
   const [annotActive, setAnnotActive] = useState(false)
   const [annotTool, setAnnotTool] = useState('hand')
   const [annotColor, setAnnotColor] = useState(COLORS[0])
-  const [textInput, setTextInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [inlineStatus, setInlineStatus] = useState(null) // 内联操作进度提示
 
   useDragDrop((droppedFiles) => {
     if (droppedFiles.length > 0) {
@@ -130,7 +130,7 @@ function ViewerPage() {
 
   // 将当前文件带入目标工具页面
   // 通过 useCurrentFile 上下文传递，目标工具页加载时自动读取
-  const handleQuickTool = (toolPath) => {
+  const handleNavigateTool = (toolPath) => {
     if (!fileData) return
     const fileObj = {
       path: filePath,
@@ -140,6 +140,51 @@ function ViewerPage() {
     }
     setCurrentFile(fileObj)
     navigate(toolPath)
+  }
+
+  // 在阅读器内直接执行操作并下载结果，不跳转
+  const handleDirectAction = useCallback(
+    async (actionId) => {
+      if (!fileData) return
+      setInlineStatus({ type: 'info', message: (t.viewerPage?.processing || '处理中...'), actionId })
+      try {
+        if (actionId === 'compress') {
+          const compressed = await compressPdf(fileData, 'recommended')
+          const blob = new Blob([new Uint8Array(compressed)], { type: 'application/pdf' })
+          saveAs(blob, (fileName.replace(/\.pdf$/i, '') || 'document') + '_compressed.pdf')
+        } else if (actionId === 'extractText') {
+          const result = await extractPdfText(fileData)
+          const blob = new Blob([result.fullText], { type: 'text/plain;charset=utf-8' })
+          saveAs(blob, (fileName.replace(/\.pdf$/i, '') || 'document') + '.txt')
+        } else if (actionId === 'exportImages') {
+          const images = await renderPdfToImages(fileData, 2.0)
+          // 逐张下载（图片数量通常不多）
+          for (let i = 0; i < images.length; i++) {
+            const resp = await fetch(images[i].url)
+            const blob = await resp.blob()
+            saveAs(blob, `${(fileName.replace(/\.pdf$/i, '') || 'document')}_page_${i + 1}.png`)
+          }
+          // 释放 blob url
+          images.forEach((img) => URL.revokeObjectURL(img.url))
+        }
+        setInlineStatus({ type: 'success', message: (t.viewerPage?.actionDone || '已完成并下载'), actionId })
+        // 3 秒后自动清除成功提示
+        setTimeout(() => setInlineStatus((s) => (s?.type === 'success' ? null : s)), 3000)
+      } catch (err) {
+        console.error('Direct action error:', err)
+        setInlineStatus({ type: 'error', message: (t.viewerPage?.actionFailed || '处理失败：{error}').replace('{error}', err.message), actionId })
+      }
+    },
+    [fileData, fileName, t]
+  )
+
+  // 快捷入口统一分发
+  const handleQuickEntry = (entry) => {
+    if (entry.kind === 'navigate') {
+      handleNavigateTool(entry.path)
+    } else {
+      handleDirectAction(entry.id)
+    }
   }
 
   // 保存带批注的 PDF
@@ -221,7 +266,6 @@ function ViewerPage() {
   const quickEntries = useMemo(() => {
     return QUICK_ENTRIES.map((e) => ({
       ...e,
-      Icon: ICON_MAP[e.icon],
       label: t.viewerPage?.[e.labelKey] || e.id,
     }))
   }, [t])
@@ -238,7 +282,6 @@ function ViewerPage() {
     active: annotActive,
     tool: annotTool,
     color: annotColor,
-    textInput,
     getPageAnnotations: annot.getPageAnnotations,
     onAddAnnotation: annot.addAnnotation,
     onDeleteAnnotation: annot.deleteAnnotation,
@@ -299,25 +342,34 @@ function ViewerPage() {
                 </span>
               </div>
             </TooltipTrigger>
-            <TooltipContent>{t.viewerPage?.quickToolsHint || '将当前文件带入工具'}</TooltipContent>
+            <TooltipContent>{t.viewerPage?.quickToolsHint || '压缩/提取/导出直接执行，编辑/打印跳转工具页'}</TooltipContent>
           </Tooltip>
 
-          {quickEntries.map(({ id, path, Icon, label }) => (
-            <Tooltip key={id}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1.5 px-2 text-xs"
-                  onClick={() => handleQuickTool(path)}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">{label}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{label}</TooltipContent>
-            </Tooltip>
-          ))}
+          {quickEntries.map((entry) => {
+            const { id, kind, icon: EntryIcon, label } = entry
+            const isRunning = inlineStatus?.actionId === id && inlineStatus?.type === 'info'
+            return (
+              <Tooltip key={id}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs"
+                    onClick={() => handleQuickEntry(entry)}
+                    disabled={isRunning}
+                  >
+                    {isRunning ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <EntryIcon className="h-3.5 w-3.5" />
+                    )}
+                    <span className="hidden md:inline">{label}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{label}</TooltipContent>
+              </Tooltip>
+            )
+          })}
 
           <div className="mx-1 h-5 w-px bg-border" />
 
@@ -374,17 +426,6 @@ function ViewerPage() {
                   />
                 ))}
               </div>
-
-              {/* 文字工具输入框 */}
-              {annotTool === ANNOT_TYPES.TEXT && (
-                <input
-                  type="text"
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  placeholder={t.viewerPage?.annotTextPlaceholder || '输入文字后点击页面'}
-                  className="h-7 w-36 rounded border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              )}
 
               {/* 操作按钮 */}
               <div className="mx-1 h-5 w-px bg-border" />
@@ -444,8 +485,33 @@ function ViewerPage() {
             : annotTool === ANNOT_TYPES.HIGHLIGHT
             ? (t.viewerPage?.annotTipHighlight || '拖拽鼠标选择高亮区域')
             : annotTool === ANNOT_TYPES.TEXT
-            ? (t.viewerPage?.annotTipText || '输入文字后点击页面添加')
+            ? (t.viewerPage?.annotTipText || '点击页面后在输入框中输入文字，按 Enter 确认')
             : (t.viewerPage?.annotTipNote || '点击页面添加便签')}
+        </div>
+      )}
+
+      {/* 内联操作状态提示条 */}
+      {inlineStatus && (
+        <div
+          className={cn(
+            'flex items-center gap-2 border-b px-4 py-1.5 text-xs',
+            inlineStatus.type === 'success' && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+            inlineStatus.type === 'error' && 'bg-destructive/10 text-destructive',
+            inlineStatus.type === 'info' && 'bg-primary/5 text-muted-foreground'
+          )}
+        >
+          {inlineStatus.type === 'info' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {inlineStatus.type === 'success' && <CheckCircle2 className="h-3.5 w-3.5" />}
+          {inlineStatus.type === 'error' && <AlertCircle className="h-3.5 w-3.5" />}
+          <span className="flex-1">{inlineStatus.message}</span>
+          {inlineStatus.type !== 'info' && (
+            <button
+              className="rounded p-0.5 hover:bg-accent"
+              onClick={() => setInlineStatus(null)}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
         </div>
       )}
 
