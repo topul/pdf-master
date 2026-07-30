@@ -211,6 +211,12 @@ autoUpdater.on('update-downloaded', (info) => {
 
 // 手动检查更新
 ipcMain.handle('update:check', async () => {
+  // 开发环境无 app-update.yml，electron-updater 会静默跳过；
+  // 这里主动推送一个明确状态，避免用户点了按钮无反馈
+  if (!app.isPackaged) {
+    sendUpdateStatus({ event: 'error', message: '开发环境下不支持检查更新，请在打包后测试' })
+    return { success: false, error: 'not packaged' }
+  }
   try {
     await autoUpdater.checkForUpdates()
     return { success: true }
@@ -242,6 +248,10 @@ ipcMain.handle('update:install', async () => {
 
 // 兼容旧调用（设置页按钮原 checkUpdate）：触发一次手动检查
 ipcMain.handle('app:checkUpdate', async () => {
+  if (!app.isPackaged) {
+    sendUpdateStatus({ event: 'error', message: '开发环境下不支持检查更新，请在打包后测试' })
+    return { success: false, error: 'not packaged', currentVersion: app.getVersion() }
+  }
   try {
     await autoUpdater.checkForUpdates()
     return { success: true, currentVersion: app.getVersion() }
