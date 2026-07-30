@@ -238,7 +238,7 @@ export async function splitPdf(fileData, splitMode, options = {}) {
   return outputs
 }
 
-export async function rotatePages(fileData, pageIndices, degrees) {
+export async function rotatePages(fileData, pageIndices, angleDeg) {
   const pdfDoc = await loadPdf(fileData)
 
   const pages = pdfDoc.getPages()
@@ -246,7 +246,8 @@ export async function rotatePages(fileData, pageIndices, degrees) {
     if (idx >= 0 && idx < pages.length) {
       const page = pages[idx]
       const currentRotation = page.getRotation().angle
-      page.setRotation((currentRotation + degrees) % 360)
+      // 注意：参数名不能叫 degrees，否则会遮蔽从 pdf-lib 导入的 degrees() 函数
+      page.setRotation(degrees((currentRotation + angleDeg) % 360))
     }
   }
 
