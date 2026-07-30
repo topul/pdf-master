@@ -4,8 +4,7 @@
 
 ---
 
-<img width="2154" height="2042" alt="image" src="https://github.com/user-attachments/assets/2676e8ed-78bd-4750-aaf7-37fb619d5526" />
-
+<img width="1779" height="1250" alt="image" src="https://github.com/user-attachments/assets/89be7622-0a63-44a6-b49f-b35783f1806c" />
 
 **[English Version / 英文版](README.md)**
 
