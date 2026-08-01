@@ -38,13 +38,15 @@ export function AnnotationLayer({
   const [dragStart, setDragStart] = useState(null)
   const [dragEnd, setDragEnd] = useState(null)
   const [hoverAnnotId, setHoverAnnotId] = useState(null)
-  // 文字批注的临时输入态：{ x, y, value } 存在时显示 inline input
+  // 文字批注的临时输入态：{ id, x, y, value } 存在时显示 inline input
   const [textDraft, setTextDraft] = useState(null)
-  // 同步草稿到 ref，避免 onBlur 与 pointerdown 重复提交
+  // ref 同步持有当前草稿；通过 updateDraft 统一更新，保证 ref 与 state 一致
   const textDraftRef = useRef(null)
-  useEffect(() => {
-    textDraftRef.current = textDraft
-  }, [textDraft])
+  const draftIdRef = useRef(0)
+  const updateDraft = useCallback((d) => {
+    textDraftRef.current = d
+    setTextDraft(d)
+  }, [])
 
   // 绘制 overlay
   const draw = useCallback(() => {
@@ -105,17 +107,23 @@ export function AnnotationLayer({
     draw()
   }, [draw])
 
-  // 文字草稿出现时自动聚焦
+  // 文字草稿出现时自动聚焦并选中文本
   useEffect(() => {
     if (textDraft && inputRef.current) {
-      inputRef.current.focus()
+      const el = inputRef.current
+      // 异步聚焦，避免与 canvas pointer 事件冲突
+      const t = setTimeout(() => {
+        el.focus()
+        el.select?.()
+      }, 0)
+      return () => clearTimeout(t)
     }
   }, [textDraft])
 
   // 切换工具或关闭批注模式时，取消未完成的文字草稿
   useEffect(() => {
-    setTextDraft(null)
-  }, [tool, active])
+    updateDraft(null)
+  }, [tool, active, updateDraft])
 
   // 坐标转换：客户端坐标 -> canvas 逻辑坐标
   const getPos = (e) => {
@@ -174,12 +182,23 @@ export function AnnotationLayer({
         color,
       })
     } else if (tool === ANNOT_TYPES.TEXT) {
-      // 点击页面：在该位置开启 inline 输入，而非立即添加
-      // 已有草稿时先确认上一个（若非空）
-      if (textDraft && textDraft.value.trim()) {
-        commitTextDraft()
+      // 点击页面：在该位置开启 inline 输入
+      // 若已有草稿且非空，先提交；用 ref 拿最新值，避免闭包陈旧
+      const prev = textDraftRef.current
+      if (prev && prev.value.trim()) {
+        // 直接提交，updateDraft(null) 会阻止旧 input 的 onBlur 再提交
+        updateDraft(null)
+        onAddAnnotation?.(pageNum, {
+          type: ANNOT_TYPES.TEXT,
+          x: prev.x,
+          y: prev.y,
+          text: prev.value.trim(),
+          fontSize: 16,
+          color,
+        })
       }
-      setTextDraft({ x: pos.x, y: pos.y, value: '' })
+      draftIdRef.current += 1
+      updateDraft({ id: draftIdRef.current, x: pos.x, y: pos.y, value: '' })
     }
   }
 
@@ -231,13 +250,11 @@ export function AnnotationLayer({
     setHoverAnnotId(null)
   }
 
-  // 提交文字草稿为批注
+  // 提交文字草稿为批注（仅 Enter 调用）
   const commitTextDraft = () => {
-    // 读 ref 拿最新草稿，并立即清空，防止 onBlur/pointerdown 重复提交
     const draft = textDraftRef.current
     if (!draft) return
-    textDraftRef.current = null
-    setTextDraft(null)
+    updateDraft(null)
     const value = draft.value.trim()
     if (value) {
       onAddAnnotation?.(pageNum, {
@@ -252,15 +269,36 @@ export function AnnotationLayer({
   }
 
   const handleTextKeyDown = (e) => {
-    // 阻止事件冒泡到全局快捷键监听
+    // 阻止事件冒泡到全局快捷键监听，确保输入正常
     e.stopPropagation()
     if (e.key === 'Enter') {
       e.preventDefault()
       commitTextDraft()
     } else if (e.key === 'Escape') {
       e.preventDefault()
-      setTextDraft(null)
+      updateDraft(null)
     }
+  }
+
+  // input 上的指针事件：阻止冒泡到 canvas，避免点击 input 触发新建草稿
+  const handleInputPointerDown = (e) => {
+    e.stopPropagation()
+  }
+
+  // 失焦时：仅在草稿未被替换/提交的情况下取消（不自动提交，避免误触发）
+  // 用 id 守护：若失焦后草稿仍是同一个且非空，保留它（用户可继续编辑）；
+  // 若为空则取消，避免空 input 悬挂
+  const handleInputBlur = () => {
+    const cur = textDraftRef.current
+    if (!cur) return
+    setTimeout(() => {
+      // 草稿已变化（新建/提交/取消），不处理
+      if (textDraftRef.current !== cur) return
+      // 仍持有同一草稿：空值则取消，非空则保留
+      if (!cur.value.trim()) {
+        updateDraft(null)
+      }
+    }, 150)
   }
 
   // 光标样式
@@ -285,22 +323,31 @@ export function AnnotationLayer({
       />
       {/* 文字批注的页面内 inline 输入框 */}
       {textDraft && (
-        <input
-          ref={inputRef}
-          type="text"
-          value={textDraft.value}
-          onChange={(e) => setTextDraft((d) => ({ ...d, value: e.target.value }))}
-          onKeyDown={handleTextKeyDown}
-          onBlur={commitTextDraft}
-          placeholder="输入文字 (Enter 确认)"
-          className="absolute z-20 min-w-[120px] rounded border bg-white px-1 py-0.5 text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-primary"
-          style={{
-            left: textDraft.x,
-            top: textDraft.y,
-            color: color.value,
-            fontSize: '16px',
-          }}
-        />
+        <div
+          className="absolute z-30 flex items-center"
+          style={{ left: textDraft.x, top: textDraft.y }}
+          onPointerDown={handleInputPointerDown}
+        >
+          {/* 批注颜色色条，提示当前颜色 */}
+          <div
+            className="h-7 w-1.5 rounded-l"
+            style={{ backgroundColor: color.value }}
+          />
+          <input
+            ref={inputRef}
+            type="text"
+            value={textDraft.value}
+            onChange={(e) =>
+              updateDraft({ ...textDraftRef.current, value: e.target.value })
+            }
+            onKeyDown={handleTextKeyDown}
+            onBlur={handleInputBlur}
+            autoFocus
+            placeholder="输入文字 (Enter 确认 / Esc 取消)"
+            className="min-w-[160px] rounded-r border border-l-0 bg-white px-2 py-1 text-sm text-gray-900 shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            style={{ fontSize: '16px' }}
+          />
+        </div>
       )}
     </>
   )
