@@ -182,12 +182,13 @@ export function AnnotationLayer({
         color,
       })
     } else if (tool === ANNOT_TYPES.TEXT) {
-      // 点击页面：在该位置开启 inline 输入
+      // 阻止浏览器默认的焦点抢夺行为（否则 canvas pointerdown 后
+      // 浏览器会把焦点还给 body，刚创建的 input 立即失焦）
+      e.preventDefault()
+
       // 若已有草稿且非空，先提交；用 ref 拿最新值，避免闭包陈旧
       const prev = textDraftRef.current
       if (prev && prev.value.trim()) {
-        // 直接提交，updateDraft(null) 会阻止旧 input 的 onBlur 再提交
-        updateDraft(null)
         onAddAnnotation?.(pageNum, {
           type: ANNOT_TYPES.TEXT,
           x: prev.x,
@@ -285,21 +286,13 @@ export function AnnotationLayer({
     e.stopPropagation()
   }
 
-  // 失焦时：仅在草稿未被替换/提交的情况下取消（不自动提交，避免误触发）
-  // 用 id 守护：若失焦后草稿仍是同一个且非空，保留它（用户可继续编辑）；
-  // 若为空则取消，避免空 input 悬挂
-  const handleInputBlur = () => {
-    const cur = textDraftRef.current
-    if (!cur) return
-    setTimeout(() => {
-      // 草稿已变化（新建/提交/取消），不处理
-      if (textDraftRef.current !== cur) return
-      // 仍持有同一草稿：空值则取消，非空则保留
-      if (!cur.value.trim()) {
-        updateDraft(null)
-      }
-    }, 150)
-  }
+  // 失焦不做任何事：避免浏览器焦点抢跳（pointerdown→focus→blur 序列）
+  // 误清空草稿。草稿清理完全由显式操作触发：
+  // - Enter 提交 → commitTextDraft → updateDraft(null)
+  // - Esc 取消 → handleTextKeyDown → updateDraft(null)
+  // - 切换工具 / 关闭批注 → useEffect([tool, active]) → updateDraft(null)
+  // - 再次点击其他位置 → handlePointerDown TEXT 分支先清空旧草稿再建新
+  const handleInputBlur = () => {}
 
   // 光标样式
   const cursorStyle = !active
