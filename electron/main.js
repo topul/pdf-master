@@ -5,6 +5,7 @@ const fsSync = require('fs')
 const pdfLib = require('pdf-lib')
 const { PDFDocument, rgb, degrees } = pdfLib
 const _fontkitImport = require('@pdf-lib/fontkit')
+const { autoUpdater } = require('electron-updater')
 
 // 兼容 @pdf-lib/fontkit 的导出（CJS/ESM 互操作）
 const realFontkit = _fontkitImport.default || _fontkitImport
@@ -81,6 +82,9 @@ app.whenReady().then(() => {
   // 注册全局快捷键
   registerShortcuts()
 
+  // 启动后台静默更新检查（仅打包环境生效，每 6 小时检查一次）
+  scheduleBackgroundUpdateCheck()
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
@@ -146,17 +150,133 @@ ipcMain.handle('app:openExternal', async (event, url) => {
   }
 })
 
-// 检查更新（暂未实现，显示提示）
-ipcMain.handle('app:checkUpdate', async () => {
-  await dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: '检查更新',
-    message: '当前版本: ' + app.getVersion(),
-    detail: '更新功能正在开发中，敬请期待！',
-    buttons: ['确定'],
-  })
-  return { success: true, currentVersion: app.getVersion() }
+// 在系统文件管理器中显示文件
+ipcMain.handle('shell:showItemInFolder', async (event, filePath) => {
+  try {
+    shell.showItemInFolder(filePath)
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
 })
+
+// ============ 自动更新（electron-updater，对接 GitHub Releases）============
+// 状态通过事件推送到渲染进程；IPC 提供手动检查/下载/安装
+autoUpdater.autoDownload = false   // 不自动下载，由用户在设置页确认
+autoUpdater.autoInstallOnAppQuit = true // 下载完成后退出应用时自动安装
+
+// 统一推送更新状态到渲染进程
+function sendUpdateStatus(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:status', payload)
+  }
+}
+
+autoUpdater.on('checking-for-update', () => {
+  sendUpdateStatus({ event: 'checking' })
+})
+
+autoUpdater.on('update-available', (info) => {
+  sendUpdateStatus({
+    event: 'available',
+    version: info.version,
+    releaseDate: info.releaseDate,
+    releaseNotes: info.releaseNotes,
+  })
+})
+
+autoUpdater.on('update-not-available', (info) => {
+  sendUpdateStatus({ event: 'not-available', version: info ? info.version : app.getVersion() })
+})
+
+autoUpdater.on('error', (err) => {
+  sendUpdateStatus({ event: 'error', message: err ? (err.message || String(err)) : 'unknown error' })
+})
+
+autoUpdater.on('download-progress', (progress) => {
+  sendUpdateStatus({
+    event: 'downloading',
+    percent: Math.round(progress.percent || 0),
+    transferred: progress.transferred,
+    total: progress.total,
+  })
+})
+
+autoUpdater.on('update-downloaded', (info) => {
+  sendUpdateStatus({
+    event: 'downloaded',
+    version: info.version,
+  })
+})
+
+// 手动检查更新
+ipcMain.handle('update:check', async () => {
+  // 开发环境无 app-update.yml，electron-updater 会静默跳过；
+  // 这里主动推送一个明确状态，避免用户点了按钮无反馈
+  if (!app.isPackaged) {
+    sendUpdateStatus({ event: 'error', message: '开发环境下不支持检查更新，请在打包后测试' })
+    return { success: false, error: 'not packaged' }
+  }
+  try {
+    await autoUpdater.checkForUpdates()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message || String(e) }
+  }
+})
+
+// 手动触发下载
+ipcMain.handle('update:download', async () => {
+  try {
+    await autoUpdater.downloadUpdate()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message || String(e) }
+  }
+})
+
+// 退出并安装更新
+ipcMain.handle('update:install', async () => {
+  try {
+    // quitAndInstall 会关闭所有窗口并退出应用，然后启动安装包
+    autoUpdater.quitAndInstall(false, true)
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.message || String(e) }
+  }
+})
+
+// 兼容旧调用（设置页按钮原 checkUpdate）：触发一次手动检查
+ipcMain.handle('app:checkUpdate', async () => {
+  if (!app.isPackaged) {
+    sendUpdateStatus({ event: 'error', message: '开发环境下不支持检查更新，请在打包后测试' })
+    return { success: false, error: 'not packaged', currentVersion: app.getVersion() }
+  }
+  try {
+    await autoUpdater.checkForUpdates()
+    return { success: true, currentVersion: app.getVersion() }
+  } catch (e) {
+    return { success: false, error: e.message || String(e), currentVersion: app.getVersion() }
+  }
+})
+
+// 应用就绪后静默后台检查（仅在打包后；开发环境跳过避免误触发）
+// 之后每隔 6 小时再检查一次
+function scheduleBackgroundUpdateCheck() {
+  if (!app.isPackaged) return
+  try {
+    autoUpdater.checkForUpdates()
+  } catch (e) {
+    // 静默失败，不打扰用户
+  }
+  setInterval(() => {
+    try {
+      autoUpdater.checkForUpdates()
+    } catch (e) {
+      // 静默失败
+    }
+  }, 6 * 60 * 60 * 1000)
+}
 
 ipcMain.handle('dialog:openFiles', async (event, options) => {
   const result = await dialog.showOpenDialog(mainWindow, {

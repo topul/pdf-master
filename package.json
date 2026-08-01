@@ -17,7 +17,10 @@
     "electron:build:linux": "vite build && electron-builder --linux",
     "electron:build:win": "vite build && electron-builder --win",
     "electron:build:mac": "vite build && electron-builder --mac",
-    "generate-icons": "node scripts/generate-icons.js"
+    "generate-icons": "node scripts/generate-icons.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@neslinesli93/qpdf-wasm": "^0.3.0",
@@ -38,6 +41,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "docx": "^8.5.0",
+    "electron-updater": "^6.8.9",
     "file-saver": "^2.0.5",
     "lucide-react": "^1.25.0",
     "pdf-lib": "^1.17.1",
@@ -55,13 +59,17 @@
     "canvas": "file:./canvas-stub"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^8.2.2",
     "electron": "^31.3.1",
     "electron-builder": "^24.13.3",
+    "jsdom": "^30.0.1",
     "vite": "^5.4.0",
+    "vitest": "^4.1.10",
     "wait-on": "^7.2.0"
   },
   "build": {
@@ -133,14 +141,24 @@
         {
           "target": "dmg",
           "arch": [
-            "x64",
+            "x64"
+          ]
+        },
+        {
+          "target": "dmg",
+          "arch": [
             "arm64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "x64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
             "arm64"
           ]
         }
@@ -163,6 +181,12 @@
           "path": "/Applications"
         }
       ]
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "topul",
+      "repo": "pdf-master",
+      "releaseType": "release"
     }
   }
 }

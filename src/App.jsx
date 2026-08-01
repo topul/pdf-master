@@ -1,82 +1,102 @@
-import React, { useState } from 'react'
-import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import React, { useState, useRef, useEffect, Suspense, lazy } from 'react'
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home,
-  FilePlus2,
-  Scissors,
-  PencilLine,
-  Type,
-  Droplet,
-  Hash,
-  Printer,
+  FileText,
   PanelLeftClose,
   PanelLeft,
-  FileText,
-  ImagePlus,
-  Image as ImageIcon,
-  FileCog,
-  Lock,
-  FileDown,
-  FileImage,
-  Layers,
-  PenTool,
-  FileEdit,
-  Bookmark,
-  GitCompare,
-  Scan,
-  Eraser,
-  FileType,
-  FileSpreadsheet,
-  Highlighter,
-  ListChecks,
   Settings as SettingsIcon,
-  BookOpen,
+  Search as SearchIcon,
+  Star,
+  X,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import useShortcuts from '@/hooks/useShortcuts.jsx'
-import MergePage from './pages/MergePage.jsx'
-import SplitPage from './pages/SplitPage.jsx'
-import EditPage from './pages/EditPage.jsx'
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut.jsx'
+import { useFavorites } from '@/hooks/useFavorites.jsx'
+import { NAV_GROUPS } from '@/config/navigation'
+import { SearchBar } from '@/components/SearchBar.jsx'
+import { CollapsibleGroup } from '@/components/CollapsibleGroup.jsx'
+import { FavoritesList } from '@/components/FavoritesList.jsx'
+import { RecentTools } from '@/components/RecentTools.jsx'
+import { ShortcutHelpDialog } from '@/components/ShortcutHelpDialog.jsx'
+import { useContextMenu } from '@/components/ContextMenu'
 import HomePage from './pages/HomePage.jsx'
-import TextPage from './pages/TextPage.jsx'
-import WatermarkPage from './pages/WatermarkPage.jsx'
-import PrintPage from './pages/PrintPage.jsx'
-import PageNumberPage from './pages/PageNumberPage.jsx'
-import ImageToPdfPage from './pages/ImageToPdfPage.jsx'
-import PdfToImagePage from './pages/PdfToImagePage.jsx'
-import MetadataPage from './pages/MetadataPage.jsx'
-import EncryptPage from './pages/EncryptPage.jsx'
-import CompressPage from './pages/CompressPage.jsx'
-import ExtractPage from './pages/ExtractPage.jsx'
-import BatchPage from './pages/BatchPage.jsx'
-import SignaturePage from './pages/SignaturePage.jsx'
-import FormPage from './pages/FormPage.jsx'
-import BookmarkPage from './pages/BookmarkPage.jsx'
-import CropPage from './pages/CropPage.jsx'
-import ComparePage from './pages/ComparePage.jsx'
-import OcrPage from './pages/OcrPage.jsx'
-import WatermarkRemovePage from './pages/WatermarkRemovePage.jsx'
-import PdfToWordPage from './pages/PdfToWordPage.jsx'
-import PdfToExcelPage from './pages/PdfToExcelPage.jsx'
-import AnnotatePage from './pages/AnnotatePage.jsx'
-import FormCreatePage from './pages/FormCreatePage.jsx'
-import BatchRenamePage from './pages/BatchRenamePage.jsx'
-import ViewerPage from './pages/ViewerPage.jsx'
-import SettingsPage from './pages/SettingsPage.jsx'
 import DragDropProvider from './components/DragDropProvider.jsx'
+
+// 路由级懒加载：减少首屏 bundle 体积，按需加载各工具页
+const MergePage = lazy(() => import('./pages/MergePage.jsx'))
+const SplitPage = lazy(() => import('./pages/SplitPage.jsx'))
+const EditPage = lazy(() => import('./pages/EditPage.jsx'))
+const TextPage = lazy(() => import('./pages/TextPage.jsx'))
+const WatermarkPage = lazy(() => import('./pages/WatermarkPage.jsx'))
+const PrintPage = lazy(() => import('./pages/PrintPage.jsx'))
+const PageNumberPage = lazy(() => import('./pages/PageNumberPage.jsx'))
+const ImageToPdfPage = lazy(() => import('./pages/ImageToPdfPage.jsx'))
+const PdfToImagePage = lazy(() => import('./pages/PdfToImagePage.jsx'))
+const MetadataPage = lazy(() => import('./pages/MetadataPage.jsx'))
+const EncryptPage = lazy(() => import('./pages/EncryptPage.jsx'))
+const CompressPage = lazy(() => import('./pages/CompressPage.jsx'))
+const ExtractPage = lazy(() => import('./pages/ExtractPage.jsx'))
+const BatchPage = lazy(() => import('./pages/BatchPage.jsx'))
+const SignaturePage = lazy(() => import('./pages/SignaturePage.jsx'))
+const FormPage = lazy(() => import('./pages/FormPage.jsx'))
+const BookmarkPage = lazy(() => import('./pages/BookmarkPage.jsx'))
+const CropPage = lazy(() => import('./pages/CropPage.jsx'))
+const ComparePage = lazy(() => import('./pages/ComparePage.jsx'))
+const OcrPage = lazy(() => import('./pages/OcrPage.jsx'))
+const WatermarkRemovePage = lazy(() => import('./pages/WatermarkRemovePage.jsx'))
+const PdfToWordPage = lazy(() => import('./pages/PdfToWordPage.jsx'))
+const PdfToExcelPage = lazy(() => import('./pages/PdfToExcelPage.jsx'))
+const AnnotatePage = lazy(() => import('./pages/AnnotatePage.jsx'))
+const FormCreatePage = lazy(() => import('./pages/FormCreatePage.jsx'))
+const BatchRenamePage = lazy(() => import('./pages/BatchRenamePage.jsx'))
+const ViewerPage = lazy(() => import('./pages/ViewerPage.jsx'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'))
+
+// 页面加载占位
+const PageFallback = () => (
+  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+    <span className="text-sm">加载中...</span>
+  </div>
+)
 
 function App() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
+  const [showSearchPanel, setShowSearchPanel] = useState(false)
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false)
   const t = useTranslations()
 
-  // 注册快捷键
+  // 注册 Electron 层快捷键
   useShortcuts()
 
+  // 全局 Ctrl+K：展开态聚焦侧边栏搜索框，收起态弹出浮动搜索面板
+  useKeyboardShortcut('ctrl+k', () => {
+    if (collapsed) {
+      setShowSearchPanel((v) => !v)
+    } else {
+      // 触发侧边栏 SearchBar 聚焦：通过自定义事件
+      window.dispatchEvent(new CustomEvent('sidebar:focus-search'))
+    }
+  })
+
+  // Ctrl+B：收起/展开侧边栏
+  useKeyboardShortcut('ctrl+b', () => setCollapsed((v) => !v))
+
+  // ? 键：显示快捷键帮助面板
+  useKeyboardShortcut('?', () => setShowShortcutHelp(true))
+
+  // 收起态浮动面板 Esc 关闭
+  useKeyboardShortcut('escape', () => setShowSearchPanel(false), [showSearchPanel])
+
   // 全局快捷键打开文件处理
-  React.useEffect(() => {
+  useEffect(() => {
     const handleOpenFile = async () => {
       const result = await window.electronAPI?.openFiles?.({
         properties: ['openFile'],
@@ -109,204 +129,226 @@ function App() {
     return () => window.removeEventListener('shortcut:openFile', handleOpenFile)
   }, [])
 
-  const menuGroups = [
-    {
-      label: t.nav.core,
-      items: [
-        { path: '/viewer', label: t.common.viewer || '阅读 PDF', icon: BookOpen, desc: t.nav.viewerDesc || '阅读并浏览 PDF' },
-        { path: '/merge', label: t.common.merge, icon: FilePlus2, desc: t.nav.mergeDesc },
-        { path: '/split', label: t.common.split, icon: Scissors, desc: t.nav.splitDesc },
-        { path: '/edit', label: t.common.edit, icon: PencilLine, desc: t.nav.editDesc },
-      ],
-    },
-    {
-      label: t.nav.convert,
-      items: [
-        { path: '/image-to-pdf', label: t.common.imageToPdf, icon: ImagePlus, desc: t.nav.imageToPdfDesc },
-        { path: '/pdf-to-image', label: t.common.pdfToImage, icon: ImageIcon, desc: t.nav.pdfToImageDesc },
-        { path: '/pdf-to-word', label: t.common.pdfToWord, icon: FileType, desc: t.nav.pdfToWordDesc },
-        { path: '/pdf-to-excel', label: t.common.pdfToExcel, icon: FileSpreadsheet, desc: t.nav.pdfToExcelDesc },
-      ],
-    },
-    {
-      label: t.nav.tools,
-      items: [
-        { path: '/compress', label: t.common.compress, icon: FileDown, desc: t.nav.compressDesc },
-        { path: '/extract', label: t.common.extract, icon: FileImage, desc: t.nav.extractDesc },
-        { path: '/text', label: t.common.text, icon: Type, desc: t.nav.textDesc },
-        { path: '/watermark', label: t.common.watermark, icon: Droplet, desc: t.nav.watermarkDesc },
-        { path: '/pagenum', label: t.common.pagenum, icon: Hash, desc: t.nav.pagenumDesc },
-        { path: '/metadata', label: t.common.metadata, icon: FileCog, desc: t.nav.metadataDesc },
-        { path: '/encrypt', label: t.common.encrypt, icon: Lock, desc: t.nav.encryptDesc },
-        { path: '/print', label: t.common.print, icon: Printer, desc: t.nav.printDesc },
-      ],
-    },
-    {
-      label: t.nav.efficiency,
-      items: [
-        { path: '/batch', label: t.common.batch, icon: Layers, desc: t.nav.batchDesc },
-        { path: '/compare', label: t.common.compare, icon: GitCompare, desc: t.nav.compareDesc },
-        { path: '/ocr', label: t.common.ocr, icon: Scan, desc: t.nav.ocrDesc },
-        { path: '/watermark-remove', label: t.common.watermarkRemove, icon: Eraser, desc: t.nav.watermarkRemoveDesc },
-        { path: '/annotate', label: t.common.annotate, icon: Highlighter, desc: t.nav.annotateDesc },
-        { path: '/signature', label: t.common.signature, icon: PenTool, desc: t.nav.signatureDesc },
-        { path: '/form-create', label: t.common.formCreate, icon: ListChecks, desc: t.nav.formCreateDesc },
-        { path: '/batch-rename', label: t.common.batchRename, icon: FileEdit, desc: t.nav.batchRenameDesc },
-        { path: '/form', label: t.common.form, icon: FileEdit, desc: t.nav.formDesc },
-        { path: '/bookmark', label: t.common.bookmark, icon: Bookmark, desc: t.nav.bookmarkDesc },
-        { path: '/crop', label: t.common.crop, icon: Scissors, desc: t.nav.cropDesc },
-      ],
-    },
-  ]
-
   const isActive = (path) =>
     path === '/' ? location.pathname === '/' : location.pathname.startsWith(path)
 
-  const availableLocales = [
-    { value: 'zh-CN', label: t.common.chinese },
-    { value: 'en-US', label: t.common.english },
+  // ====== 工具项右键菜单（收藏）======
+  const { favorites, isFavorited, toggleFavorite } = useFavorites(t)
+  const [contextTool, setContextTool] = useState(null)
+  const searchPanelRef = useRef(null)
+
+  const handleContextMenuTool = (e, tool) => {
+    e.preventDefault()
+    setContextTool(tool)
+  }
+
+  const toolMenuItems = [
+    {
+      label: t.common?.open || '打开',
+      onClick: () => {
+        if (contextTool) navigate(contextTool.path)
+      },
+    },
+    { divider: true },
+    {
+      label: isFavorited(contextTool?.id)
+        ? (t.common?.removeFavorite || '取消收藏')
+        : (t.common?.addFavorite || '添加到收藏夹'),
+      onClick: () => {
+        if (contextTool) toggleFavorite(contextTool)
+      },
+    },
   ]
+
+  const { renderMenu: renderToolMenu } = useContextMenu(toolMenuItems, [contextTool, favorites])
 
   return (
     <DragDropProvider>
       <div className="flex h-screen w-screen overflow-hidden bg-muted/30 text-foreground">
-      <aside
-        className={cn(
-          'flex h-full shrink-0 flex-col border-r bg-card transition-all duration-300 ease-out',
-          collapsed ? 'w-[68px]' : 'w-[244px]'
-        )}
-      >
-        <div className="flex h-16 items-center gap-3 border-b px-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
-            <FileText className="h-5 w-5" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-tight">PDF Master</span>
-              <span className="text-[11px] text-muted-foreground">{t.home.subtitle}</span>
-            </div>
+        <aside
+          className={cn(
+            'flex h-full shrink-0 flex-col border-r bg-card transition-all duration-300 ease-out',
+            collapsed ? 'w-[68px]' : 'w-[244px]'
           )}
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-2 py-3">
-          <Link
-            to="/"
-            className={cn(
-              'group mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              isActive('/')
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-            )}
-            title={t.common.home}
-          >
-            <Home className="h-[18px] w-[18px] shrink-0" />
-            {!collapsed && <span>{t.common.home}</span>}
-          </Link>
-
-          {menuGroups.map((group, gi) => (
-            <div key={gi} className="mt-4">
-              {!collapsed && (
-                <div className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                  {group.label}
-                </div>
-              )}
-              {collapsed && <div className="mx-3 my-2 border-t" />}
-              {group.items.map((item) => {
-                const Icon = item.icon
-                const active = isActive(item.path)
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      'group mb-0.5 flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                      active
-                        ? 'bg-primary/10 font-medium text-primary'
-                        : 'text-foreground/75 hover:bg-accent hover:text-foreground'
-                    )}
-                    title={item.label}
-                  >
-                    <Icon
-                      className={cn(
-                        'h-[18px] w-[18px] shrink-0 transition-colors',
-                        active ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                      )}
-                    />
-                    {!collapsed && (
-                      <div className="flex flex-col leading-tight">
-                        <span>{item.label}</span>
-                        <span className="text-[11px] text-muted-foreground/80">{item.desc}</span>
-                      </div>
-                    )}
-                  </Link>
-                )
-              })}
+        >
+          {/* Logo 区域 */}
+          <div className="flex h-14 items-center gap-3 border-b px-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
+              <FileText className="h-5 w-5" />
             </div>
-          ))}
-        </nav>
-
-        <div className="flex flex-col gap-1 border-t p-2">
-          <div className={cn('flex', collapsed ? 'flex-col items-center gap-1' : 'items-center justify-between')}>
-            <Link
-              to="/settings"
-              className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title={t.common.settings || '设置'}
-            >
-              <SettingsIcon className="h-[18px] w-[18px]" />
-            </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-muted-foreground"
-              onClick={() => setCollapsed(!collapsed)}
-              title={collapsed ? t.common.expand : t.common.collapse}
-            >
-              {collapsed ? (
-                <PanelLeft className="h-[18px] w-[18px]" />
-              ) : (
-                <PanelLeftClose className="h-[18px] w-[18px]" />
-              )}
-            </Button>
+            {!collapsed && (
+              <div className="flex flex-col leading-tight">
+                <span className="text-sm font-semibold tracking-tight">PDF Master</span>
+                <span className="text-[11px] text-muted-foreground">{t.home?.subtitle}</span>
+              </div>
+            )}
           </div>
-        </div>
-      </aside>
 
-      <main className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/merge" element={<MergePage />} />
-            <Route path="/split" element={<SplitPage />} />
-            <Route path="/edit" element={<EditPage />} />
-            <Route path="/image-to-pdf" element={<ImageToPdfPage />} />
-            <Route path="/pdf-to-image" element={<PdfToImagePage />} />
-            <Route path="/text" element={<TextPage />} />
-            <Route path="/watermark" element={<WatermarkPage />} />
-            <Route path="/pagenum" element={<PageNumberPage />} />
-            <Route path="/compress" element={<CompressPage />} />
-            <Route path="/extract" element={<ExtractPage />} />
-            <Route path="/metadata" element={<MetadataPage />} />
-            <Route path="/encrypt" element={<EncryptPage />} />
-            <Route path="/print" element={<PrintPage />} />
-            <Route path="/batch" element={<BatchPage />} />
-            <Route path="/compare" element={<ComparePage />} />
-            <Route path="/ocr" element={<OcrPage />} />
-            <Route path="/watermark-remove" element={<WatermarkRemovePage />} />
-            <Route path="/pdf-to-word" element={<PdfToWordPage />} />
-            <Route path="/pdf-to-excel" element={<PdfToExcelPage />} />
-            <Route path="/annotate" element={<AnnotatePage />} />
-            <Route path="/form-create" element={<FormCreatePage />} />
-            <Route path="/batch-rename" element={<BatchRenamePage />} />
-            <Route path="/signature" element={<SignaturePage />} />
-            <Route path="/form" element={<FormPage />} />
-            <Route path="/bookmark" element={<BookmarkPage />} />
-            <Route path="/crop" element={<CropPage />} />
-            <Route path="/viewer" element={<ViewerPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </div>
-      </main>
-    </div>
+          {/* 搜索框区域 */}
+          <div className="px-2 pt-2">
+            {collapsed ? (
+              <button
+                onClick={() => setShowSearchPanel(true)}
+                className="flex h-10 w-full items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title={t.common?.search || '搜索功能'}
+              >
+                <SearchIcon className="h-[18px] w-[18px]" />
+              </button>
+            ) : (
+              <SearchBar variant="sidebar" />
+            )}
+          </div>
+
+          {/* 导航区域 */}
+          <nav className="flex-1 overflow-y-auto px-2 py-2">
+            <Link
+              to="/"
+              className={cn(
+                'group mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                isActive('/')
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+              title={t.common?.home}
+            >
+              <Home className="h-[18px] w-[18px] shrink-0" />
+              {!collapsed && <span>{t.common?.home}</span>}
+            </Link>
+
+            {/* 收藏夹 & 最近使用 */}
+            {!collapsed ? (
+              <>
+                <FavoritesList collapsed={false} onContextMenuTool={handleContextMenuTool} />
+                <RecentTools collapsed={false} />
+                <div className="mx-3 my-2 border-t" />
+              </>
+            ) : (
+              <>
+                {favorites.length > 0 && (
+                  <div className="mx-3 my-2 flex flex-col items-center gap-1">
+                    <Star className="h-3.5 w-3.5 text-amber-500" />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 分组导航：前两组视觉相邻（不加分隔） */}
+            {NAV_GROUPS.map((group) => (
+              <CollapsibleGroup
+                key={group.id}
+                group={group}
+                isActive={isActive}
+                collapsed={collapsed}
+                onContextMenuTool={handleContextMenuTool}
+              />
+            ))}
+          </nav>
+
+          {/* 底部区域 */}
+          <div className="flex flex-col gap-1 border-t p-2">
+            <div
+              className={cn(
+                'flex',
+                collapsed ? 'flex-col items-center gap-1' : 'items-center justify-between'
+              )}
+            >
+              <Link
+                to="/settings"
+                className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                title={t.common?.settings || '设置'}
+              >
+                <SettingsIcon className="h-[18px] w-[18px]" />
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 text-muted-foreground"
+                onClick={() => setCollapsed(!collapsed)}
+                title={collapsed ? t.common?.expand : t.common?.collapse}
+              >
+                {collapsed ? (
+                  <PanelLeft className="h-[18px] w-[18px]" />
+                ) : (
+                  <PanelLeftClose className="h-[18px] w-[18px]" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </aside>
+
+        {/* 收起态浮动搜索面板 */}
+        {showSearchPanel && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowSearchPanel(false)}
+            />
+            <div
+              ref={searchPanelRef}
+              className="fixed left-[68px] top-1/2 z-50 w-[360px] max-h-[400px] -translate-y-1/2 overflow-hidden rounded-lg border bg-popover shadow-lg"
+            >
+              <div className="flex items-center justify-between border-b px-3 py-2">
+                <span className="text-sm font-medium">{t.common?.search || '搜索功能'}</span>
+                <button
+                  onClick={() => setShowSearchPanel(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-2">
+                <SearchBar variant="sidebar" autoFocus onNavigate={() => setShowSearchPanel(false)} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* 主内容区 */}
+        <main className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
+            <Suspense fallback={<PageFallback />}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/merge" element={<MergePage />} />
+                <Route path="/split" element={<SplitPage />} />
+                <Route path="/edit" element={<EditPage />} />
+                <Route path="/image-to-pdf" element={<ImageToPdfPage />} />
+                <Route path="/pdf-to-image" element={<PdfToImagePage />} />
+                <Route path="/text" element={<TextPage />} />
+                <Route path="/watermark" element={<WatermarkPage />} />
+                <Route path="/pagenum" element={<PageNumberPage />} />
+                <Route path="/compress" element={<CompressPage />} />
+                <Route path="/extract" element={<ExtractPage />} />
+                <Route path="/metadata" element={<MetadataPage />} />
+                <Route path="/encrypt" element={<EncryptPage />} />
+                <Route path="/print" element={<PrintPage />} />
+                <Route path="/batch" element={<BatchPage />} />
+                <Route path="/compare" element={<ComparePage />} />
+                <Route path="/ocr" element={<OcrPage />} />
+                <Route path="/watermark-remove" element={<WatermarkRemovePage />} />
+                <Route path="/pdf-to-word" element={<PdfToWordPage />} />
+                <Route path="/pdf-to-excel" element={<PdfToExcelPage />} />
+                <Route path="/annotate" element={<AnnotatePage />} />
+                <Route path="/form-create" element={<FormCreatePage />} />
+                <Route path="/batch-rename" element={<BatchRenamePage />} />
+                <Route path="/signature" element={<SignaturePage />} />
+                <Route path="/form" element={<FormPage />} />
+                <Route path="/bookmark" element={<BookmarkPage />} />
+                <Route path="/crop" element={<CropPage />} />
+                <Route path="/viewer" element={<ViewerPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Routes>
+            </Suspense>
+          </div>
+        </main>
+
+        {renderToolMenu()}
+
+        <ShortcutHelpDialog
+          open={showShortcutHelp}
+          onClose={() => setShowShortcutHelp(false)}
+        />
+      </div>
     </DragDropProvider>
   )
 }

@@ -20,6 +20,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { AnnotationLayer } from '@/components/AnnotationLayer.jsx'
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut.jsx'
 import { cn } from '@/lib/utils'
 
 let pdfjsLib = null
@@ -34,7 +36,7 @@ async function loadPdfJs() {
   return pdfjsLib
 }
 
-function PdfViewer({ fileData, fileName = 'document.pdf' }) {
+function PdfViewer({ fileData, fileName = 'document.pdf', annotationProps }) {
   const t = useTranslations()
   const containerRef = useRef(null)
   const viewportRef = useRef(null)
@@ -57,6 +59,14 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
   const renderTasksRef = useRef({})
   const renderingRef = useRef({})
   const isProgrammaticScroll = useRef(false)
+
+  // 批注模式相关 props（由 ViewerPage 注入）
+  const annotActive = !!annotationProps?.active
+  const annotTool = annotationProps?.tool
+  const annotColor = annotationProps?.color
+  const annotList = annotationProps?.getPageAnnotations?.(currentPage) || []
+  const onAddAnnot = annotationProps?.onAddAnnotation
+  const onDeleteAnnot = annotationProps?.onDeleteAnnotation
 
   const loadPdf = useCallback(async () => {
     if (!fileData) return
@@ -270,6 +280,16 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
     setFitMode(null)
     setScale((s) => Math.max(0.25, s - 0.25))
   }
+
+  // 阅读器快捷键：Home/End 跳页，+/- 缩放，0 重置
+  useKeyboardShortcut('home', () => goToPage(1), [totalPages])
+  useKeyboardShortcut('end', () => goToPage(totalPages), [totalPages])
+  useKeyboardShortcut('+', () => handleZoomIn(), [])
+  useKeyboardShortcut('-', () => handleZoomOut(), [])
+  useKeyboardShortcut('0', () => {
+    setFitMode(null)
+    setScale(1)
+  }, [])
 
   const searchText = useCallback(async () => {
     if (!pdfDoc || !searchQuery.trim()) return
@@ -693,6 +713,17 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                       className="block"
                       style={{ width: '100%', height: '100%' }}
                     />
+                    <AnnotationLayer
+                      pageNum={pageNum}
+                      width={pageWidth}
+                      height={pageHeight}
+                      annotations={annotationProps?.getPageAnnotations?.(pageNum) || []}
+                      tool={annotTool}
+                      color={annotColor}
+                      onAddAnnotation={onAddAnnot}
+                      onDeleteAnnotation={onDeleteAnnot}
+                      active={annotActive}
+                    />
                   </div>
                 ))}
               </div>
@@ -710,6 +741,17 @@ function PdfViewer({ fileData, fileName = 'document.pdf' }) {
                     pageNum={currentPage}
                     scale={scale}
                     renderPage={renderPage}
+                  />
+                  <AnnotationLayer
+                    pageNum={currentPage}
+                    width={pageWidth}
+                    height={pageHeight}
+                    annotations={annotList}
+                    tool={annotTool}
+                    color={annotColor}
+                    onAddAnnotation={onAddAnnot}
+                    onDeleteAnnotation={onDeleteAnnot}
+                    active={annotActive}
                   />
                 </div>
               </div>

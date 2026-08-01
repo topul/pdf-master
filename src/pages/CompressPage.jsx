@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import { cn } from '@/lib/utils'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useAutoLoadCurrentFile } from '@/hooks/useCurrentFile.jsx'
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
@@ -31,6 +32,7 @@ function formatSize(bytes) {
 
 function CompressPage() {
   const t = useTranslations()
+  useAutoLoadCurrentFile()
   const [file, setFile] = useState(null)
   const [mode, setMode] = useState('recommended')
   const [jpegQuality, setJpegQuality] = useState(50)

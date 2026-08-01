@@ -4,8 +4,7 @@ A cross-platform PDF processing desktop application built with Electron + React,
 
 ---
 
-<img width="2154" height="2042" alt="image" src="https://github.com/user-attachments/assets/ec79ba00-0111-4d0e-95a8-d91c66f69b0d" />
-
+<img width="1779" height="1250" alt="image" src="https://github.com/user-attachments/assets/99a697f6-d6e8-45f4-82ba-fbee2b5f480e" />
 
 **[中文版本 / Chinese Version](README-zh.md)**
 

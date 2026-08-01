@@ -1,40 +1,24 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  FilePlus2,
-  Scissors,
-  PencilLine,
-  Type,
-  Droplet,
-  Hash,
-  Printer,
-  ArrowRight,
+  FileText,
+  Trash2,
+  Clock,
   ShieldCheck,
   Cpu,
   WifiOff,
   Sparkles,
-  ChevronDown,
-  ImagePlus,
-  Image as ImageIcon,
-  FileCog,
-  Lock,
-  FileDown,
-  FileImage,
-  Layers,
-  PenTool,
-  FileEdit,
-  Bookmark,
-  FileText,
-  Trash2,
-  Clock,
-  BookOpen,
+  Pin,
+  PinOff,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/hooks/useLocale.jsx'
-import { cn } from '@/lib/utils'
-import { getHistory, clearHistory, formatDate, formatSize } from '../utils/history'
+import { SearchBar } from '@/components/SearchBar.jsx'
+import { QuickActions } from '@/components/QuickActions.jsx'
+import { CategoryCards } from '@/components/CategoryCards.jsx'
+import { getSortedHistory, clearHistory, removeFromHistory, togglePin, formatDate, formatSize } from '../utils/history'
 import { useContextMenu } from '../components/ContextMenu'
 
 function HomePage() {
@@ -42,11 +26,9 @@ function HomePage() {
   const navigate = useNavigate()
   const [history, setHistory] = useState([])
   const [contextFile, setContextFile] = useState(null)
-  const [showConvert, setShowConvert] = useState(false)
-  const [showTools, setShowTools] = useState(false)
 
   useEffect(() => {
-    setHistory(getHistory())
+    setHistory(getSortedHistory())
   }, [])
 
   const handleClearHistory = () => {
@@ -55,9 +37,31 @@ function HomePage() {
   }
 
   const handleDeleteFile = (file) => {
-    const filtered = history.filter((h) => h.path !== file.path)
-    localStorage.setItem('pdf_master_history', JSON.stringify(filtered))
+    const filtered = removeFromHistory(file.path)
     setHistory(filtered)
+  }
+
+  const handleTogglePin = (file) => {
+    setHistory(togglePin(file.path))
+  }
+
+  // 在系统文件管理器中显示文件所在文件夹
+  const handleShowInFolder = async (file) => {
+    try {
+      await window.electronAPI?.showItemInFolder?.(file.path)
+    } catch (e) {
+      // 降级：复制路径到剪贴板
+      handleCopyPath(file)
+    }
+  }
+
+  // 复制文件路径到剪贴板
+  const handleCopyPath = async (file) => {
+    try {
+      await navigator.clipboard.writeText(file.path)
+    } catch (e) {
+      // ignore
+    }
   }
 
   const handleOpenFile = async (file) => {
@@ -80,356 +84,108 @@ function HomePage() {
 
   const menuItems = [
     {
-      label: t.common.open || '打开',
+      label: t.common?.open || '打开',
       onClick: () => handleOpenFile(contextFile),
+    },
+    {
+      label: contextFile?.pinned
+        ? (t.common?.unpin || '取消固定')
+        : (t.common?.pin || '固定置顶'),
+      onClick: () => handleTogglePin(contextFile),
     },
     { divider: true },
     {
-      label: t.common.delete || '删除',
+      label: t.common?.showInFolder || '在文件夹中显示',
+      onClick: () => handleShowInFolder(contextFile),
+    },
+    {
+      label: t.common?.copyPath || '复制路径',
+      onClick: () => handleCopyPath(contextFile),
+    },
+    { divider: true },
+    {
+      label: t.common?.delete || '删除',
       danger: true,
       onClick: () => handleDeleteFile(contextFile),
     },
   ]
 
-  const { isOpen: menuOpen, renderMenu } = useContextMenu(menuItems, [contextFile])
-
-  const mainFeatures = [
-    {
-      path: '/viewer',
-      icon: BookOpen,
-      title: t.common.viewer || '阅读 PDF',
-      description: t.home.viewerFeature || '阅读、浏览、搜索 PDF 文档',
-      accent: 'from-emerald-500 to-teal-600',
-      tag: t.home.newFeature || '新功能',
-    },
-    {
-      path: '/merge',
-      icon: FilePlus2,
-      title: t.common.merge,
-      description: t.home.feature1,
-      accent: 'from-blue-500 to-indigo-600',
-      tag: t.home.popular || '常用',
-    },
-    {
-      path: '/split',
-      icon: Scissors,
-      title: t.common.split,
-      description: t.home.feature2,
-      accent: 'from-rose-500 to-pink-600',
-      tag: t.home.popular || '常用',
-    },
-    {
-      path: '/edit',
-      icon: PencilLine,
-      title: t.common.edit,
-      description: t.home.feature3,
-      accent: 'from-amber-500 to-orange-600',
-      tag: t.home.visual || '可视化',
-    },
-  ]
-
-  const convertFeatures = [
-    {
-      path: '/image-to-pdf',
-      icon: ImagePlus,
-      title: t.common.imageToPdf,
-      description: t.home.feature4,
-      accent: 'text-emerald-600 bg-emerald-500/10',
-    },
-    {
-      path: '/pdf-to-image',
-      icon: ImageIcon,
-      title: t.common.pdfToImage,
-      description: t.home.feature4,
-      accent: 'text-orange-600 bg-orange-500/10',
-    },
-  ]
-
-  const moreFeatures = [
-    {
-      path: '/compress',
-      icon: FileDown,
-      title: t.common.compress,
-      description: t.nav.compressDesc,
-      accent: 'text-emerald-600 bg-emerald-500/10',
-    },
-    {
-      path: '/extract',
-      icon: FileImage,
-      title: t.common.extract,
-      description: t.nav.extractDesc,
-      accent: 'text-amber-600 bg-amber-500/10',
-    },
-    {
-      path: '/text',
-      icon: Type,
-      title: t.common.text,
-      description: t.nav.textDesc,
-      accent: 'text-emerald-600 bg-emerald-500/10',
-    },
-    {
-      path: '/watermark',
-      icon: Droplet,
-      title: t.common.watermark,
-      description: t.nav.watermarkDesc,
-      accent: 'text-pink-600 bg-pink-500/10',
-    },
-    {
-      path: '/pagenum',
-      icon: Hash,
-      title: t.common.pagenum,
-      description: t.nav.pagenumDesc,
-      accent: 'text-violet-600 bg-violet-500/10',
-    },
-    {
-      path: '/metadata',
-      icon: FileCog,
-      title: t.common.metadata,
-      description: t.nav.metadataDesc,
-      accent: 'text-sky-600 bg-sky-500/10',
-    },
-    {
-      path: '/encrypt',
-      icon: Lock,
-      title: t.common.encrypt,
-      description: t.nav.encryptDesc,
-      accent: 'text-red-600 bg-red-500/10',
-    },
-    {
-      path: '/print',
-      icon: Printer,
-      title: t.common.print,
-      description: t.nav.printDesc,
-      accent: 'text-cyan-600 bg-cyan-500/10',
-    },
-    {
-      path: '/batch',
-      icon: Layers,
-      title: t.common.batch,
-      description: t.nav.batchDesc,
-      accent: 'text-violet-600 bg-violet-500/10',
-    },
-    {
-      path: '/signature',
-      icon: PenTool,
-      title: t.common.signature,
-      description: t.nav.signatureDesc,
-      accent: 'text-orange-600 bg-orange-500/10',
-    },
-    {
-      path: '/form',
-      icon: FileEdit,
-      title: t.common.form,
-      description: t.nav.formDesc,
-      accent: 'text-pink-600 bg-pink-500/10',
-    },
-    {
-      path: '/bookmark',
-      icon: Bookmark,
-      title: t.common.bookmark,
-      description: t.nav.bookmarkDesc,
-      accent: 'text-indigo-600 bg-indigo-500/10',
-    },
-    {
-      path: '/crop',
-      icon: Scissors,
-      title: t.common.crop,
-      description: t.nav.cropDesc,
-      accent: 'text-teal-600 bg-teal-500/10',
-    },
-  ]
+  const { renderMenu } = useContextMenu(menuItems, [contextFile])
 
   const stats = [
-    { value: '19+', label: t.home.features },
-    { value: '3', label: 'Platforms' },
-    { value: '100%', label: 'Local' },
-    { value: '0', label: 'Uploads' },
+    { value: '27+', label: t.home?.statFeatures || t.home?.features || '功能' },
+    { value: '3', label: t.home?.statPlatforms || 'Platforms' },
+    { value: '100%', label: t.home?.statLocal || 'Local' },
+    { value: '0', label: t.home?.statUploads || 'Uploads' },
   ]
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-8 lg:px-10 lg:py-12">
-      <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-8 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 lg:p-12">
-        <div className="absolute inset-0 -z-10 opacity-60">
+    <div className="mx-auto w-full max-w-5xl px-6 py-8 lg:px-10 lg:py-10">
+      {/* Hero + 搜索区域 */}
+      <section className="relative rounded-2xl border bg-gradient-to-br from-slate-50 via-white to-slate-50 p-8 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 lg:p-10">
+        {/* 装饰层独立裁剪，避免外层 overflow-hidden 截断搜索下拉框 */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-2xl opacity-60">
           <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -bottom-24 -left-10 h-72 w-72 rounded-full bg-indigo-500/10 blur-3xl" />
         </div>
         <Badge className="mb-4 gap-1.5 border-primary/20 bg-primary/5 text-primary">
           <Sparkles className="h-3 w-3" />
-          {t.home.subtitle}
+          {t.home?.subtitle}
         </Badge>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white lg:text-4xl">
-          {t.home.title}
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white lg:text-3xl">
+          {t.home?.title}
         </h1>
-        <p className="mt-3 max-w-2xl text-base text-muted-foreground lg:text-lg">
-          {t.home.description}
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground lg:text-base">
+          {t.home?.description}
         </p>
-        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="h-4 w-4 text-emerald-500" />
-            <span>{t.common.confirm}</span>
+            <span>{t.common?.confirm}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Cpu className="h-4 w-4 text-blue-500" />
-            <span>{t.home.subtitle.split(' · ')[1]}</span>
+            <span>{t.home?.subtitle?.split(' · ')[1]}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <WifiOff className="h-4 w-4 text-violet-500" />
-            <span>{t.home.subtitle.split(' · ')[2]}</span>
+            <span>{t.home?.subtitle?.split(' · ')[2]}</span>
           </div>
+        </div>
+
+        {/* 大尺寸搜索框 */}
+        <div className="mt-6 flex justify-center">
+          <SearchBar variant="hero" />
         </div>
       </section>
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">{t.nav.core}</h2>
-            <p className="text-sm text-muted-foreground">{t.home.description}</p>
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {mainFeatures.map((feature) => {
-            const Icon = feature.icon
-            return (
-              <Link key={feature.path} to={feature.path} className="group">
-                <Card className="relative h-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-lg">
-                  <div className={cn('absolute inset-x-0 top-0 h-1 bg-gradient-to-r', feature.accent)} />
-                  <CardContent className="flex h-full flex-col gap-3 p-6">
-                    <div className="flex items-center justify-between">
-                      <div
-                        className={cn(
-                          'flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm',
-                          feature.accent
-                        )}
-                      >
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {feature.tag}
-                      </Badge>
-                    </div>
-                    <div className="mt-1 flex-1">
-                      <h3 className="text-base font-semibold">{feature.title}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {feature.description}
-                      </p>
-                    </div>
-                    <div className="mt-2 flex items-center gap-1 text-sm font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                      {t.common.apply}
-                      <ArrowRight className="h-4 w-4" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            )
-          })}
-        </div>
+      {/* 快捷操作 */}
+      <section className="mt-8">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight">
+          {t.home?.quickStart || '快速开始'}
+        </h2>
+        <QuickActions />
       </section>
 
-      <section className="mt-10">
-        <button
-          onClick={() => setShowConvert(!showConvert)}
-          className="mb-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 hover:bg-muted/50 transition-colors"
-        >
-          <div className="text-left">
-            <h2 className="text-lg font-semibold tracking-tight">{t.nav.convert}</h2>
-            <p className="text-sm text-muted-foreground">{t.home.description}</p>
-          </div>
-          <ChevronDown
-            className={cn(
-              'h-5 w-5 text-muted-foreground transition-transform',
-              showConvert && 'rotate-180'
-            )}
-          />
-        </button>
-        {showConvert && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {convertFeatures.map((feature) => {
-              const Icon = feature.icon
-              return (
-                <Link key={feature.path} to={feature.path} className="group">
-                  <Card className="relative h-full overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-md">
-                    <CardContent className="flex h-full items-center gap-4 p-5">
-                      <div
-                        className={cn(
-                          'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
-                          feature.accent
-                        )}
-                      >
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-base font-semibold">{feature.title}</h3>
-                        <p className="mt-0.5 text-sm text-muted-foreground">
-                          {feature.description}
-                        </p>
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })}
-          </div>
-        )}
+      {/* 工具分类 */}
+      <section className="mt-8">
+        <h2 className="mb-4 text-lg font-semibold tracking-tight">
+          {t.home?.categories || '工具分类'}
+        </h2>
+        <CategoryCards />
       </section>
 
-      <section className="mt-10">
-        <button
-          onClick={() => setShowTools(!showTools)}
-          className="mb-3 flex w-full items-center justify-between rounded-lg px-2 py-1.5 hover:bg-muted/50 transition-colors"
-        >
-          <div className="text-left">
-            <h2 className="text-lg font-semibold tracking-tight">{t.nav.tools}</h2>
-            <p className="text-sm text-muted-foreground">{t.home.description}</p>
-          </div>
-          <ChevronDown
-            className={cn(
-              'h-5 w-5 text-muted-foreground transition-transform',
-              showTools && 'rotate-180'
-            )}
-          />
-        </button>
-        {showTools && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {moreFeatures.map((feature) => {
-              const Icon = feature.icon
-              return (
-                <Link key={feature.path} to={feature.path} className="group">
-                  <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                    <CardContent className="flex h-full flex-col gap-3 p-5">
-                      <div
-                        className={cn(
-                          'flex h-10 w-10 items-center justify-center rounded-lg',
-                          feature.accent
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold">{feature.title}</h3>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {feature.description}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-10">
+      {/* 统计数据 */}
+      <section className="mt-8">
         <Card>
           <CardContent className="grid grid-cols-2 gap-4 p-6 md:grid-cols-4">
             {stats.map((stat, i) => (
               <div
                 key={i}
-                className={cn(
-                  'flex flex-col items-center justify-center gap-1 py-2 text-center',
-                  i !== stats.length - 1 && 'md:border-r'
-                )}
+                className={
+                  'flex flex-col items-center justify-center gap-1 py-2 text-center ' +
+                  (i !== stats.length - 1 ? 'md:border-r' : '')
+                }
               >
                 <div className="text-2xl font-bold tracking-tight text-primary">
                   {stat.value}
@@ -441,18 +197,19 @@ function HomePage() {
         </Card>
       </section>
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between">
+      {/* 最近文件 */}
+      <section className="mt-8">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-lg font-semibold tracking-tight">
-              {t.home.recentFiles || '最近文件'}
+              {t.home?.recentFiles || '最近文件'}
             </h2>
           </div>
           {history.length > 0 && (
             <Button variant="ghost" size="sm" onClick={handleClearHistory}>
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              {t.home.clearHistory || '清除历史'}
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              {t.home?.clearHistory || '清除历史'}
             </Button>
           )}
         </div>
@@ -460,18 +217,28 @@ function HomePage() {
           <Card>
             <CardContent className="p-0">
               <div className="divide-y">
-                {history.map((item, idx) => (
+                {history.slice(0, 5).map((item, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group cursor-pointer"
+                    className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
                     onContextMenu={(e) => handleContextMenu(e, item)}
                     onClick={() => handleOpenFile(item)}
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
                       <FileText className="h-4 w-4 text-primary" />
+                      {item.pinned && (
+                        <Pin className="absolute -right-1 -top-1 h-3 w-3 rotate-45 fill-primary text-primary" />
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium text-sm">{item.name}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium">{item.name}</span>
+                        {item.pinned && (
+                          <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                            {t.common?.pinned || '已固定'}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{formatSize(item.size)}</span>
                         <span>·</span>
@@ -481,9 +248,19 @@ function HomePage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
+                        handleTogglePin(item)
+                      }}
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-primary group-hover:opacity-100"
+                      title={item.pinned ? (t.common?.unpin || '取消固定') : (t.common?.pin || '固定置顶')}
+                    >
+                      {item.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
                         handleDeleteFile(item)
                       }}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -496,8 +273,8 @@ function HomePage() {
           <Card>
             <CardContent className="py-8">
               <div className="flex flex-col items-center justify-center text-muted-foreground">
-                <FileText className="h-10 w-10 mb-2 opacity-30" />
-                <p className="text-sm">{t.home.noRecentFiles || '暂无最近打开的文件'}</p>
+                <FileText className="mb-2 h-10 w-10 opacity-30" />
+                <p className="text-sm">{t.home?.noRecentFiles || '暂无最近打开的文件'}</p>
               </div>
             </CardContent>
           </Card>

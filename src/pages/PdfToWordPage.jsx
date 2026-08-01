@@ -24,11 +24,13 @@ import {
 } from 'lucide-react'
 import { useTranslations } from '@/hooks/useLocale.jsx'
 import useDragDrop from '../hooks/useDragDrop.js'
+import { useAutoLoadCurrentFile } from '@/hooks/useCurrentFile.jsx'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 export default function PdfToWordPage() {
   const t = useTranslations()
+  useAutoLoadCurrentFile()
   const [file, setFile] = useState(null)
   const [pdf, setPdf] = useState(null)
   const [totalPages, setTotalPages] = useState(0)
