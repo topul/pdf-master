@@ -46,6 +46,7 @@ jobs:
 
       - name: 安装 Linux 打包依赖
         if: matrix.platform == 'linux'
+        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 \
@@ -55,6 +56,7 @@ jobs:
             libasound2t64 || sudo apt-get install -y libasound2 || true
 
       - name: 安装依赖
+        shell: bash
         run: npm install --no-audit --no-fund
 
       - name: 构建前端 + 打包 Electron 应用
@@ -63,6 +65,7 @@ jobs:
           # （上传产物 + latest.yml / mac.yml / win.yml / linux.yml，供 auto-updater 使用）
           # workflow_dispatch 手动触发时仅打包，不发布
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           if [[ "${{ startsWith(github.ref, 'refs/tags/v') }}" == "true" ]]; then
             npm run electron:build:${{ matrix.platform }} -- --publish always
