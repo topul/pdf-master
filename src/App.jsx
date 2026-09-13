@@ -56,6 +56,10 @@ const FormCreatePage = lazy(() => import('./pages/FormCreatePage.jsx'))
 const BatchRenamePage = lazy(() => import('./pages/BatchRenamePage.jsx'))
 const ViewerPage = lazy(() => import('./pages/ViewerPage.jsx'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'))
+const HeaderFooterPage = lazy(() => import('./pages/HeaderFooterPage.jsx'))
+const BackgroundPage = lazy(() => import('./pages/BackgroundPage.jsx'))
+const GrayscalePage = lazy(() => import('./pages/GrayscalePage.jsx'))
+const PdfToPptPage = lazy(() => import('./pages/PdfToPptPage.jsx'))
 
 // 页面加载占位
 const PageFallback = () => (
@@ -127,6 +131,37 @@ function App() {
 
     window.addEventListener('shortcut:openFile', handleOpenFile)
     return () => window.removeEventListener('shortcut:openFile', handleOpenFile)
+  }, [])
+
+  // 系统文件关联打开（右键"打开方式"/双击 PDF）：读文件后走与拖拽相同的 files:dropped 流程
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api?.onOpenFile) return
+
+    const dispose = api.onOpenFile(async (filePath) => {
+      try {
+        const fileResult = await api.readFile(filePath)
+        if (!fileResult?.success) return
+        const fileName = filePath.split(/[\\/]/).pop()
+        window.dispatchEvent(
+          new CustomEvent('files:dropped', {
+            detail: {
+              files: [
+                {
+                  path: filePath,
+                  name: fileName,
+                  data: fileResult.data,
+                  size: fileResult.data.length,
+                },
+              ],
+            },
+          })
+        )
+      } catch (e) {
+        console.error('打开关联文件失败:', e)
+      }
+    })
+    return dispose
   }, [])
 
   const isActive = (path) =>
@@ -337,6 +372,10 @@ function App() {
                 <Route path="/crop" element={<CropPage />} />
                 <Route path="/viewer" element={<ViewerPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/header-footer" element={<HeaderFooterPage />} />
+                <Route path="/background" element={<BackgroundPage />} />
+                <Route path="/grayscale" element={<GrayscalePage />} />
+                <Route path="/pdf-to-ppt" element={<PdfToPptPage />} />
               </Routes>
             </Suspense>
           </div>
