@@ -104,9 +104,9 @@
       ],
       "category": "Utility",
       "icon": "build/icon.png",
+      "executableName": "pdf-master",
       "desktop": {
-        "MimeType": "application/pdf;",
-        "Exec": "pdf-master %F"
+        "MimeType": "application/pdf;"
       }
     },
     "win": {
