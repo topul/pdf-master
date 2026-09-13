@@ -1,6 +1,6 @@
 {
   "name": "pdf-master",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "跨平台 PDF 处理桌面应用，支持合并、拆分、编辑等功能",
   "main": "electron/main.js",
   "author": {
@@ -47,6 +47,7 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.6.82",
     "postcss": "^8.5.19",
+    "pptxgenjs": "^4.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",
@@ -102,7 +103,11 @@
         "AppImage"
       ],
       "category": "Utility",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "desktop": {
+        "MimeType": "application/pdf;",
+        "Exec": "pdf-master %F"
+      }
     },
     "win": {
       "target": [
@@ -131,7 +136,8 @@
       "deleteAppDataOnUninstall": false,
       "differentialPackage": false,
       "unicode": true,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "include": "build/installer.nsh"
     },
     "portable": {
       "requestExecutionLevel": "user"
@@ -166,7 +172,19 @@
       "category": "public.app-category.utilities",
       "icon": "build/icon.icns",
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "PDF Document",
+            "CFBundleTypeRole": "Viewer",
+            "LSHandlerRank": "Alternate",
+            "LSItemContentTypes": [
+              "com.adobe.pdf"
+            ]
+          }
+        ]
+      }
     },
     "dmg": {
       "contents": [

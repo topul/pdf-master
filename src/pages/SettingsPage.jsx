@@ -284,7 +284,7 @@ function SettingsPage() {
                 </div>
                 <h3 className="text-lg font-semibold">PDF Master</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {t.settings?.version || '版本'} 1.9.0
+                  {t.settings?.version || '版本'} 1.10.0
                 </p>
                 <p className="mt-4 max-w-sm text-xs text-muted-foreground">
                   {t.settings?.aboutDesc || '一款完全在本地运行的 PDF 处理工具集，保护您的隐私安全。'}

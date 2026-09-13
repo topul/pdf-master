@@ -5,6 +5,8 @@ import {
   Loader2,
   FileEdit,
   CheckCircle2,
+  Download,
+  Upload,
 } from 'lucide-react'
 import { fillForm, getFormFields } from '../utils/pdfUtils.js'
 import { Button } from '@/components/ui/button'
@@ -125,6 +127,85 @@ function FormPage() {
     }
   }
 
+  const handleExportJson = async () => {
+    if (fields.length === 0) {
+      setStatus({ type: 'error', message: t.form.noFormError || '没有可填写的表单' })
+      return
+    }
+    const exportData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      sourceFile: file?.name || '',
+      fields: fields.map((f) => ({
+        name: f.name,
+        type: f.type,
+        value: fieldValues[f.name] ?? f.value ?? '',
+      })),
+    }
+    const saveResult = await window.electronAPI.saveFile({
+      defaultPath: file?.name?.replace(/\.pdf$/i, '_form.json') || 'form-data.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (saveResult.canceled) return
+    const jsonStr = JSON.stringify(exportData, null, 2)
+    const bytes = Array.from(new TextEncoder().encode(jsonStr))
+    const writeResult = await window.electronAPI.writeFile(saveResult.filePath, bytes)
+    if (writeResult.success) {
+      setStatus({ type: 'success', message: (t.form.exportSuccess || '表单数据已导出到：{path}').replace('{path}', saveResult.filePath) })
+    } else {
+      setStatus({ type: 'error', message: (t.form.saveError || '保存失败：{error}').replace('{error}', writeResult.error) })
+    }
+  }
+
+  const handleImportJson = async () => {
+    const result = await window.electronAPI.openFiles({
+      properties: ['openFile'],
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (result.canceled) return
+
+    const fileResult = await window.electronAPI.readFile(result.filePaths[0])
+    if (!fileResult.success) {
+      setStatus({ type: 'error', message: (t.form.importError || '导入失败：{error}').replace('{error}', fileResult.error) })
+      return
+    }
+
+    try {
+      const text = new TextDecoder().decode(new Uint8Array(fileResult.data))
+      const data = JSON.parse(text)
+
+      // 兼容两种格式：完整导出格式 { fields: [{name, value}] } 或简单键值对 { fieldName: value }
+      const imported = {}
+      if (Array.isArray(data.fields)) {
+        data.fields.forEach((f) => {
+          if (f && typeof f.name === 'string') imported[f.name] = f.value ?? ''
+        })
+      } else if (data && typeof data === 'object') {
+        Object.entries(data).forEach(([k, v]) => {
+          if (typeof v === 'string' || typeof v === 'boolean') imported[k] = String(v)
+        })
+      }
+
+      const merged = { ...fieldValues }
+      let matched = 0
+      fields.forEach((f) => {
+        if (imported[f.name] !== undefined) {
+          merged[f.name] = imported[f.name]
+          matched++
+        }
+      })
+      setFieldValues(merged)
+
+      if (matched > 0) {
+        setStatus({ type: 'success', message: (t.form.importMatched || '已导入 {matched} 个字段的值').replace('{matched}', matched) })
+      } else {
+        setStatus({ type: 'info', message: t.form.importNoMatch || 'JSON 中没有字段名与当前表单匹配' })
+      }
+    } catch (error) {
+      setStatus({ type: 'error', message: (t.form.importError || '导入失败：{error}').replace('{error}', error.message) })
+    }
+  }
+
   const getFieldTypeLabel = (type) => {
     const labels = {
       TextField: t.form.textField || '文本框',
@@ -153,6 +234,24 @@ function FormPage() {
         <Button size="sm" onClick={handleSelectFile} disabled={processing}>
           <FileText className="mr-1.5 h-4 w-4" />
           {t.form.selectFile || '选择文件'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleImportJson}
+          disabled={!currentData || fields.length === 0 || processing}
+        >
+          <Upload className="mr-1.5 h-4 w-4" />
+          {t.form.importJson || '导入数据'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportJson}
+          disabled={!currentData || fields.length === 0 || processing}
+        >
+          <Download className="mr-1.5 h-4 w-4" />
+          {t.form.exportJson || '导出数据'}
         </Button>
         <Button
           size="sm"

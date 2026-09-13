@@ -25,6 +25,61 @@ const fontkit = {
 }
 
 let mainWindow
+// 启动时通过文件关联打开的文件路径（窗口未就绪时暂存）
+let pendingOpenFile = null
+
+// 从命令行参数中提取 PDF 文件路径（Windows/Linux 文件关联启动）
+function extractPdfPath(argv) {
+  if (!Array.isArray(argv)) return null
+  for (let i = argv.length - 1; i >= 0; i--) {
+    const arg = argv[i]
+    if (typeof arg === 'string' && /\.pdf$/i.test(arg) && fsSync.existsSync(arg)) {
+      return arg
+    }
+  }
+  return null
+}
+
+// 把文件路径转发给渲染进程（渲染进程负责读文件并走 files:dropped 流程）
+function sendOpenFile(filePath) {
+  if (!filePath) return
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow.webContents.send('file:open', filePath)
+      })
+    } else {
+      mainWindow.webContents.send('file:open', filePath)
+    }
+  } else {
+    pendingOpenFile = filePath
+  }
+}
+
+// 单实例：第二个实例把文件路径带过来并聚焦已有窗口
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (event, argv) => {
+    const filePath = extractPdfPath(argv)
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+      if (filePath) sendOpenFile(filePath)
+    }
+  })
+}
+
+// macOS：文件拖到 Dock 图标 / 右键"打开方式"触发
+app.on('open-file', (event, filePath) => {
+  event.preventDefault()
+  if (app.isReady()) {
+    sendOpenFile(filePath)
+  } else {
+    pendingOpenFile = filePath
+  }
+})
 
 function getIconPath() {
   const iconDir = path.join(__dirname, '../build')
@@ -84,6 +139,13 @@ app.whenReady().then(() => {
 
   // 启动后台静默更新检查（仅打包环境生效，每 6 小时检查一次）
   scheduleBackgroundUpdateCheck()
+
+  // 处理文件关联启动：Windows/Linux 从 argv 提取，macOS 从 open-file 暂存
+  const startupFile = extractPdfPath(process.argv) || pendingOpenFile
+  pendingOpenFile = null
+  if (startupFile) {
+    sendOpenFile(startupFile)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -547,6 +609,175 @@ ipcMain.handle('pdf:addPageNumbers', async (event, args) => {
         x, y, size: fontSize, font,
         color: rgb(color.r, color.g, color.b),
       })
+    })
+
+    const bytes = await pdfDoc.save()
+    return { success: true, data: Array.from(bytes) }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+// 添加页眉页脚（文字/图片 Logo，支持页码占位符）
+ipcMain.handle('pdf:addHeaderFooter', async (event, args) => {
+  try {
+    const { fileData, options } = args
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData))
+    const pages = pdfDoc.getPages()
+    const font = await getChineseFont(pdfDoc)
+    const color = options.color || { r: 0, g: 0, b: 0 }
+    const fontSize = options.fontSize || 10
+    const margin = options.margin != null ? options.margin : 40
+    const opacity = options.opacity != null ? options.opacity : 1
+
+    // 嵌入图片 Logo（可选）
+    let logoImage = null
+    if (options.imageData && options.imageData.length > 0) {
+      const imgBytes = new Uint8Array(options.imageData)
+      try {
+        logoImage = await pdfDoc.embedPng(imgBytes)
+      } catch {
+        logoImage = await pdfDoc.embedJpg(imgBytes)
+      }
+    }
+    const logoHeight = options.imageHeight || 24
+    const logoScale = logoImage ? logoHeight / logoImage.height : 1
+    const logoWidth = logoImage ? logoImage.width * logoScale : 0
+
+    pages.forEach((page, idx) => {
+      const { width, height } = page.getSize()
+      const total = pages.length
+
+      // content 支持 {page}/{total} 占位符
+      const renderItem = (item) => {
+        if (!item) return
+        const content = (item.content || '')
+          .replace('{page}', String(idx + 1))
+          .replace('{total}', String(total))
+        const hasText = content.trim().length > 0
+        const hasImage = item.showImage && logoImage
+        if (!hasText && !hasImage) return
+
+        const textWidth = hasText ? font.widthOfTextAtSize(content, fontSize) : 0
+        const gap = hasText && hasImage ? 6 : 0
+        const blockWidth = textWidth + gap + (hasImage ? logoWidth : 0)
+
+        const isHeader = item.position.startsWith('top')
+        const y = isHeader ? height - margin - fontSize : margin
+
+        let x
+        if (item.position.endsWith('left')) {
+          x = margin
+        } else if (item.position.endsWith('right')) {
+          x = width - margin - blockWidth
+        } else {
+          x = width / 2 - blockWidth / 2
+        }
+
+        if (hasImage) {
+          page.drawImage(logoImage, {
+            x,
+            y: y - (logoHeight - fontSize) / 2,
+            width: logoWidth,
+            height: logoHeight,
+            opacity,
+          })
+          x += logoWidth + gap
+        }
+        if (hasText) {
+          page.drawText(content, {
+            x,
+            y,
+            size: fontSize,
+            font,
+            color: rgb(color.r, color.g, color.b),
+            opacity,
+          })
+        }
+      }
+
+      if (options.header) renderItem({ ...options.header, position: options.header.position || 'top-center' })
+      if (options.footer) renderItem({ ...options.footer, position: options.footer.position || 'bottom-center' })
+    })
+
+    const bytes = await pdfDoc.save()
+    return { success: true, data: Array.from(bytes) }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+// 把一个原始绘制指令流插到页面内容流最前面，实现"画在已有内容之下"
+function prependPageContent(pdfDoc, page, opsText) {
+  const PDFName = pdfLib.PDFName
+  const PDFArray = pdfLib.PDFArray
+  const stream = pdfDoc.context.stream(opsText)
+  const streamRef = pdfDoc.context.register(stream)
+  const contents = page.node.get(PDFName.of('Contents'))
+  if (contents instanceof PDFArray) {
+    contents.insert(0, streamRef)
+  } else if (contents) {
+    page.node.set(PDFName.of('Contents'), pdfDoc.context.obj([streamRef, contents]))
+  } else {
+    page.node.set(PDFName.of('Contents'), streamRef)
+  }
+}
+
+// 设置背景（纯色画在内容层之下；图片作为半透明叠加层，支持拉伸/平铺）
+ipcMain.handle('pdf:addBackground', async (event, args) => {
+  try {
+    const { fileData, options } = args
+    const pdfDoc = await PDFDocument.load(new Uint8Array(fileData))
+    const pages = pdfDoc.getPages()
+    const opacity = options.opacity != null ? options.opacity : 0.15
+
+    let bgImage = null
+    if (options.type === 'image' && options.imageData && options.imageData.length > 0) {
+      const imgBytes = new Uint8Array(options.imageData)
+      try {
+        bgImage = await pdfDoc.embedPng(imgBytes)
+      } catch {
+        bgImage = await pdfDoc.embedJpg(imgBytes)
+      }
+    }
+
+    const color = options.color || { r: 1, g: 1, b: 1 }
+    const mode = options.mode || 'stretch' // stretch | tile
+
+    pages.forEach((page) => {
+      const { width, height } = page.getSize()
+
+      if (options.type === 'color') {
+        // 直接拼一段底层绘制指令：q rg re f Q，插到内容流开头
+        const ops = `q\n${color.r.toFixed(4)} ${color.g.toFixed(4)} ${color.b.toFixed(4)} rg\n0 0 ${width.toFixed(2)} ${height.toFixed(2)} re f\nQ\n`
+        prependPageContent(pdfDoc, page, ops)
+      } else if (bgImage) {
+        if (mode === 'tile') {
+          const tileW = bgImage.width * (options.scale || 1)
+          const tileH = bgImage.height * (options.scale || 1)
+          const cols = Math.ceil(width / tileW)
+          const rows = Math.ceil(height / tileH)
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              page.drawImage(bgImage, {
+                x: c * tileW,
+                y: r * tileH,
+                width: tileW,
+                height: tileH,
+                opacity,
+              })
+            }
+          }
+        } else {
+          page.drawImage(bgImage, {
+            x: 0,
+            y: 0,
+            width,
+            height,
+            opacity,
+          })
+        }
+      }
     })
 
     const bytes = await pdfDoc.save()

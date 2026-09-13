@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pdfAddText: (fileData, options) => ipcRenderer.invoke('pdf:addText', { fileData, options }),
   pdfAddWatermark: (fileData, options) => ipcRenderer.invoke('pdf:addWatermark', { fileData, options }),
   pdfAddPageNumbers: (fileData, options) => ipcRenderer.invoke('pdf:addPageNumbers', { fileData, options }),
+  pdfAddHeaderFooter: (fileData, options) => ipcRenderer.invoke('pdf:addHeaderFooter', { fileData, options }),
+  pdfAddBackground: (fileData, options) => ipcRenderer.invoke('pdf:addBackground', { fileData, options }),
   pdfEncrypt: (fileData, options) => ipcRenderer.invoke('pdf:encrypt', { fileData, options }),
   pdfDecrypt: (fileData, password) => ipcRenderer.invoke('pdf:decrypt', { fileData, password }),
   pdfCompress: (fileData, mode, jpegQuality) => ipcRenderer.invoke('pdf:compress', { fileData, mode, jpegQuality }),
@@ -62,5 +64,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event, payload) => callback(payload)
     ipcRenderer.on('update:status', handler)
     return () => ipcRenderer.removeListener('update:status', handler)
+  },
+  // 系统文件关联打开（右键"打开方式"/双击 PDF）
+  onOpenFile: (callback) => {
+    const handler = (_event, filePath) => callback(filePath)
+    ipcRenderer.on('file:open', handler)
+    return () => ipcRenderer.removeListener('file:open', handler)
   },
 })

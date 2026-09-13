@@ -341,6 +341,83 @@ export async function addPageNumbers(fileData, options = {}) {
   return result.data
 }
 
+// 添加页眉页脚（主进程执行，支持文字/Logo/页码占位符）
+export async function addHeaderFooter(fileData, options = {}) {
+  const result = await window.electronAPI.pdfAddHeaderFooter(fileData, options)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  return result.data
+}
+
+// 设置背景（主进程执行，纯色或图片）
+export async function addBackground(fileData, options = {}) {
+  const result = await window.electronAPI.pdfAddBackground(fileData, options)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  return result.data
+}
+
+// 灰度化：用 pdfjs 渲染每页为图片，在 canvas 上做灰度/二值化处理，再用 pdf-lib 组装新 PDF
+// mode: 'grayscale' | 'bw'，scale 控制输出清晰度（默认 2）
+export async function convertToGrayscale(fileData, options = {}) {
+  const { mode = 'grayscale', scale = 2, bwThreshold = 180, onProgress } = options
+
+  const pdfjsLib = await import('pdfjs-dist')
+  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default
+
+  const uint8Array = new Uint8Array(fileData)
+  const loadingTask = pdfjsLib.getDocument({ data: uint8Array })
+  const pdf = await loadingTask.promise
+
+  const newPdf = await PDFDocument.create()
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const viewport = page.getViewport({ scale })
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+
+    await page.render({ canvasContext: ctx, viewport }).promise
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const d = imageData.data
+    for (let p = 0; p < d.length; p += 4) {
+      // BT.709 亮度公式
+      const lum = 0.2126 * d[p] + 0.7152 * d[p + 1] + 0.0722 * d[p + 2]
+      let v
+      if (mode === 'bw') {
+        v = lum >= bwThreshold ? 255 : 0
+      } else {
+        v = lum
+      }
+      d[p] = d[p + 1] = d[p + 2] = v
+    }
+    ctx.putImageData(imageData, 0, 0)
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+    const pngBytes = new Uint8Array(await blob.arrayBuffer())
+    const img = await newPdf.embedPng(pngBytes)
+
+    const newPage = newPdf.addPage([viewport.width / scale, viewport.height / scale])
+    newPage.drawImage(img, {
+      x: 0,
+      y: 0,
+      width: viewport.width / scale,
+      height: viewport.height / scale,
+    })
+
+    if (onProgress) onProgress(i, pdf.numPages)
+  }
+
+  const bytes = await newPdf.save()
+  return Array.from(bytes)
+}
+
 // 压缩 PDF（主进程 qpdf-wasm 执行）
 // mode: 'fast' | 'recommended' | 'strong'
 export async function compressPdf(fileData, mode = 'recommended', jpegQuality) {

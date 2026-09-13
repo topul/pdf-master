@@ -6,6 +6,7 @@ import {
   Lock, FileDown, Eraser, FileCog, Printer, ListChecks, GitCompare,
   RefreshCw, ShieldCheck, Search, Star, Clock, Settings,
   Home, ChevronDown, ChevronRight, ArrowRight, X, FileText, Sparkles,
+  LayoutTemplate, Palette, Contrast, Presentation,
 } from 'lucide-react'
 
 const iconRegistry = {
@@ -16,6 +17,7 @@ const iconRegistry = {
   Lock, FileDown, Eraser, FileCog, Printer, ListChecks, GitCompare,
   RefreshCw, ShieldCheck, Search, Star, Clock, Settings,
   Home, ChevronDown, ChevronRight, ArrowRight, X, FileText, Sparkles,
+  LayoutTemplate, Palette, Contrast, Presentation,
 }
 
 export function getIcon(name) {
